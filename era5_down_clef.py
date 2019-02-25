@@ -9,9 +9,10 @@
 #      python era5_download.py -y <year> -m <month> -v <variable> -t  <stream> 
 # depends on cdapi.py that can be downloaded from the Copernicus website
 #   https://cds.climate.copernicus.eu/api-how-to
-# Author: Paola Petrelli for ARC Centre of Excellence for Climate System Science
+# Author: Paola Petrelli for ARC Centre of Excellence for Climate Extremes
+#         Matt Nethery NCI 
 # contact: paolap@utas.edu.au
-# last updated 20/09/2018
+# last updated 22/02/2019
 #!/usr/bin/python
 
 from clef.collections import connect, ECMWF, Variable
@@ -90,6 +91,89 @@ def build_request(dsargs, yr, mn, variable, daylist):
         rdict['pressure_level']= dsargs['levels']
     return rdict 
 
+def do_request(r):
+    """
+    Issue the download request. param 'r' is a tuple:
+    [0] dataset name
+    [1] the qry
+    [2] target filename
+    [3] ip for download url
+
+    Download to staging area first, compress netcdf (nccopy)
+    """
+
+    tempfn = os.path.join(stagedir,r[2]) 
+    # the actual retrieve part
+    # create client instance
+    c = cdsapi.Client()
+    #print('Downloading {} ... '.format(tempfn))
+    #print('Request: {}'.format(r[1]))
+    # need to capture exceptions
+    apirc = False
+    try:
+        # issue the request (to modified api)
+        res = c.retrieve(r[0], r[1], tempfn)
+        apirc = True
+    except Exception as e:
+        print ('ERROR: %s' % e)
+        apirc = False
+
+    if apirc:
+        # get download url and replace ip
+        url = res.location
+        if '.198/' in res.location:
+            url = res.location.replace('.198/', '.{}/'.format(r[3]))
+        cmd = '{} {} {}'.format(cfg['getcmd'], tempfn, url)
+        cmd = f'{cfg['getcmd']} {tempfn} {url}'
+        #print('{} ERA5 Downloading: {} to {}'.format(get_timestamp(), url, tempfn))
+        print(f'{get_timestamp()} ERA5 Downloading: {url} to {tempfn}')
+        #return
+        p = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
+        out,err = p.communicate()
+        if not p.returncode:            # successful
+            # do some compression on the file - assuming 1. it's netcdf, 2. that nccopy will fail if file is corrupt
+            cmd = '{} {} {}'.format(cfg['nccmd'], tempfn, r[2])
+            p1 = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
+            out,err = p1.communicate()
+            if not p1.returncode:       # check was successful
+                print('{} ERA5 download success: {}'.format(get_timestamp(), tempfn))
+                # move to correct destination
+                #if not os.rename(tempfn, r[2]):
+                #    print('{} ERA5 moved to {}'.format(get_timestamp(), r[2]))
+                #
+                # update db
+                # ...
+            else:
+                print('{} ERA5 nc command failed! (deleting temp file {})\n{}'.format(get_timestamp(), tempfn), err.decode())
+                os.remove(tempfn)
+
+        else:
+            print('{} ERA5 download error: \n{}'.format(get_timestamp(), err.decode()))
+            os.remove(tempfn)
+
+    return
+
+def fix_ip(ip,alt):
+    ''' if ip adress is .198 then change to faster server ''' 
+    # list of alternate ip address for downloading from
+    # the default server with ip = .198 is very slow
+    ipl = ['110', '210']
+    return ip.replace('.198',ipl[alt])
+
+
+def target():
+     # set output path
+    datadir = '/g/data/ub4/era5'
+    stagedir = os.path.join(datadir,'staging',stream, var,yr)
+    destdir = os.path.join(datadir,stream,var,yr)
+    #head, tail = os.path.split(r[2])
+    #tempfn = os.path.join(head, cfg['staging'], tail)
+    # destdir = os.path.join(cfg['datadir'], fmtdir, ds['subdir'], w, y)
+    # stagedir = os.path.join(destdir, cfg['staging'])
+    # create path if required
+    if not os.path.exists(stagedir):
+            os.makedirs(stagedir)
+    return stagedir, destdir
 
 def main():
     global stype
@@ -107,7 +191,7 @@ def main():
     start = args["start"]
     end = args["end"]
 
-    # build Copernicus requests for each month and submit it using cdsap module
+    # build Copernicus requests for each month and submit it using cdsapi modified module
 
     for mn in mntlist:
         print( yr, mn)
@@ -124,6 +208,15 @@ def main():
         except RuntimeError:
             print("Runtime error")
 
+    # parallel downloads
+    pool = ThreadPool(cfg['nthreads'])
+    results = pool.map(do_request, rqlist)
+    #results = pool.imap_unordered(do_request, rqlist)
+    #close the pool and wait for the work to finish
+    pool.close()
+    pool.join()
+
+    print('--- Done ---')
 
 if __name__ == "__main__":
     main()

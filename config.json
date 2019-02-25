@@ -1,0 +1,10 @@
+{
+    "nthreads": 8,
+    "datadir": "/g/data/ub4/era5",
+    "staging": "/g/data/ub4/era5/staging",
+    "getcmd": "curl -o",
+    "resumecmd": "curl -C -o",
+    "qccmd": "gdalinfo",
+    "nccmd": "nccopy -k 4 -d5 -s"
+}
+
