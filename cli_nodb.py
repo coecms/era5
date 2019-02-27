@@ -18,8 +18,6 @@
 import click
 import logging
 import json
-#from clef.collections import connect, ECMWF, Variable
-#from clef.update_collections import update_item
 import cdsapi
 from calendar import monthrange
 from datetime import datetime
@@ -35,8 +33,7 @@ def config_log(debug):
     # start a logger
     logger = logging.getLogger('era5log')
     # set a formatter to manage the output format of our handler
-    formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
-    #formatter = logging.Formatter('%(levelname) %(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter('%(levelname) %(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
     # set era5log level explicitly otherwise it inherits the root logger level:WARNING
     # if debug: level DEBUG otherwise INFO
     # because this is the logger level it will determine the lowest possible level for thehandlers
@@ -57,7 +54,7 @@ def config_log(debug):
 
     # add a handler to send INFO level messages to file 
     # the messagges will be appended to the same file
-    # create a new log file every month
+    # create a new log file every day 
     date = datetime.now().strftime("%Y%m%d") 
     logname = '/g/data/ub4/Work/Logs/ERA5/era5_log_' + date + '.txt' 
     flog = logging.FileHandler(logname) 
@@ -95,13 +92,13 @@ def define_dates(yr,mn):
     return daylist 
 
 
-def define_var(vars, varparam):
-    """ Find grib code in vars dictioanry and return relevant info
+def define_var(vardict, varparam):
+    """ Find grib code in vardict dictionary and return relevant info
     """
     global era5log
     queue = True
     try:
-        name, cds_name = vars[varparam]
+        name, cds_name = vardict[varparam]
     except:
        era5log.info(f'Selected parameter code {varparam} is not available')
        queue = False
@@ -122,8 +119,8 @@ def read_vars():
     """Read parameters info from era5_vars.json file
     """
     with open('era5_vars.json','r') as fj:
-         vars = json.read(fj)
-    return vars 
+         vardict = json.load(fj)
+    return vardict 
 
 
 def build_dict(dsargs, yr, mn, var, daylist, oformat):
@@ -143,7 +140,7 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat):
     return rdict 
 
 
-def download(url,tempfn):
+def file_down(url, tempfn, size):
     """ Open process to download file
         If fails try tor esume at least once
         :return: success: true or false
@@ -153,18 +150,35 @@ def download(url,tempfn):
     era5log.info(f'ERA5 Downloading: {url} to {tempfn}')
     p = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
     out,err = p.communicate()
-    if not p.returncode:            # successful
-        return true
-    else:
+    #if not p.returncode:            # successful
+    #    return true
+    #else:
+        #cmd = f"{cfg['resumecmd']} {tempfn} {url}"
+        #era5log.info(f'ERA5 Resuming download: {url} to {tempfn}')
+        #p1 = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
+        #out,err = p1.communicate()
+        #if not p1.returncode:            # successful
+        #    return true
+        #else:
+        #    return false
+    # alternative check using actual file size
+    # limited to number of retry set in config.json
+    n = 0
+    while os.path.getsize(tempfn) < size and n < cfg['retry']:
         cmd = f"{cfg['resumecmd']} {tempfn} {url}"
-        era5log.info(f'ERA5 Resuming download: {url} to {tempfn}')
+        era5log.info(f'ERA5 Resuming download {n+1}: {url} to {tempfn}')
         p1 = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
         out,err = p1.communicate()
+        # need to add something to break cycle if file unavailable or at least limits reruns
         if not p1.returncode:            # successful
-            return true
+            return True
+        #elif "unavailable":
+            #return False
         else:
-            return false
-
+            n+=1
+     # if there's always a returncode for all retry return false
+    return False
+    
 
 def do_request(r):
     """
@@ -203,9 +217,11 @@ def do_request(r):
     if apirc:
         # get download url and replace ip
         url = res.location
+        # get size from response to check file complete
+        size = res.content_length
         if '.198/' in res.location:
             url = res.location.replace('.198/', f'.{r[4]}/')
-        if download(url, tempfn):            # successful
+        if file_down(url, tempfn, size):            # successful
             # do some compression on the file - assuming 1. it's netcdf, 2. that nccopy will fail if file is corrupt
             cmd = f"{cfg['nccmd']} {tempfn} {fn}"
             p = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -254,14 +270,14 @@ def api_request(update, oformat, stream, params, yr, mntlist):
     # retrieve stream arguments
     dsargs = define_args(stream)
     era5log.debug(f'Stream attributes: {dsargs}')
-    # get vars details from json file
-    vars = read_vars()
+    # get variables details from json file
+    vardict = read_vars()
     # define params to download
     if update and params == []:
         params = dsargs['params']
     # loop through params and months requested
     for varp in params:
-        queue, var, cdsname =  define_var(clefdb, varp)
+        queue, var, cdsname =  define_var(vardict, varp)
         # if grib code exists but cds name is not defined skip var and print warning
         if not queue:
             continue

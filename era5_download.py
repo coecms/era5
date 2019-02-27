@@ -7,18 +7,25 @@ from datetime import datetime
 from multiprocessing.dummy import Pool as ThreadPool
 #from multiprocessing import Pool as ThreadPool
 import subprocess as sp
+import sqlite3
 #from io import StringIO
 import cdsapi
 from era5_config import cfg, cds
 
 # make a list of existing files
 # eg. glob
-# but in meantime use a pre-generated one
-with open('era5_nc.list') as fin:
-    nclist = sorted( [ x.rstrip() for x in list(fin) ] )
+# get a list of already in db
+conn = sqlite3.connect(cfg['db'], timeout=10, isolation_level=None)
+with conn:
+    c = conn.cursor()
+    sql = 'select filename from file order by filename asc'
+    c.execute(sql)
+    nclist = [ x[0] for x in c.fetchall() ]
 
-# create a list of tuples containing the requests to be issued to cdsapi
-rqlist = []
+
+# but in meantime use a pre-generated one
+#with open('era5_nc.list') as fin:
+#    nclist = sorted( [ x.rstrip() for x in list(fin) ] )
 
 # list of alternate ip address for downloading from
 # the default server with ip = .198 is very slow
@@ -26,6 +33,8 @@ ipl = ['110', '210']
 
 print('Generating CDSAPI requests ...')
 
+# create a list of tuples containing the requests to be issued to cdsapi
+rqlist = []
 # loop thru each dataset
 for ds in cds[1:2]:
 #for ds in cds:
@@ -65,13 +74,14 @@ for ds in cds[1:2]:
 
         # loop thru each year
         #for y in yrs:
-        for y in ['2005', '2004']:
+        for y in ['2003']:
 
             # set output path
             destdir = os.path.join(cfg['datadir'], fmtdir, ds['subdir'], w, y)
+            stagedir = os.path.join(destdir, cfg['staging'])
             # create path if required
-            if not os.path.exists(destdir):
-                os.makedirs(destdir)
+            if not os.path.exists(stagedir):
+                os.makedirs(stagedir)
 
             # loop thru each month
             for m in mths:
@@ -111,9 +121,10 @@ def do_request(r):
     [2] target filename
     [3] ip for download url
 
-    Download to staging area first, do some checks (gdal ?) before moving to destination
+    Download to staging area first, compress netcdf (nccopy)
     """
-    tempfn = os.path.join(cfg['staging'], os.path.basename(r[2]))
+    head, tail = os.path.split(r[2])
+    tempfn = os.path.join(head, cfg['staging'], tail)
     
     # the actual retrieve part
     # create client instance
@@ -141,23 +152,27 @@ def do_request(r):
         p = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
         out,err = p.communicate()
         if not p.returncode:		# successful
-            # do some QC on the file eg. gdalinfo tempfn
-            cmd = '{} {}'.format(cfg['qccmd'], tempfn)
+            # do some compression on the file - assuming 1. it's netcdf, 2. that nccopy will fail if file is corrupt
+            cmd = '{} {} {}'.format(cfg['nccmd'], tempfn, r[2])
             p1 = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
             out,err = p1.communicate()
             if not p1.returncode:       # check was successful
-                print('{} ERA5 Download and QC success: {}'.format(get_timestamp(), tempfn))
-                # rewrite nc file with compression
-                # ???
+                print('{} ERA5 download success: {}'.format(get_timestamp(), tempfn))
                 # move to correct destination
-                if not os.rename(tempfn, r[2]):
-                    print('{} ERA5 moved to {}'.format(get_timestamp(), r[2]))
+                #if not os.rename(tempfn, r[2]):
+                #    print('{} ERA5 moved to {}'.format(get_timestamp(), r[2]))
+                #
+                # update db
+                # ...
             else:
-                print('{} ERA5 QC Failed! (deleting temp file {})'.format(get_timestamp(), tempfn))
+                print('{} ERA5 nc command failed! (deleting file {})\n{}'.format(get_timestamp(), tempfn, err.decode()))
                 os.remove(tempfn)
 
         else:
-            print('{} ERA5 Error: \n{}'.format(get_timestamp(), err.decode()))
+            print('{} ERA5 download error: (file {})\n{}'.format(get_timestamp(), tempfn, err.decode()))
+            os.remove(tempfn)
+            # retry ???
+
 #
 
 # parallel downloads

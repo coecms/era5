@@ -153,9 +153,11 @@ cfg = {
     #'datadir': '/g/data/ub4/era5',
     'datadir': '/g/data/gv1/matt/era5',
     #'datadir': './',
-    'staging': '/g/data/gv1/matt/era5/.staging',
+    #'staging': '/g/data/gv1/matt/era5/.staging',
+    'staging': 'uncompressed',
     'getcmd': 'curl -o',
     'qccmd': 'gdalinfo',
+    'nccmd': 'nccopy -k 4 -d5 -s',
     'db': 'era5.sqlite',
 }
 

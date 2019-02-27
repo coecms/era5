@@ -41,18 +41,20 @@ for f in g:
             ts = datetime.fromtimestamp(s.st_mtime).strftime(tsfmt)
             fl.append( (fn, l, ts, s.st_size) )
 
-print('New files found: {}'.format(len(fl)), fl[-1])
+print('New files found: {}'.format(len(fl)))
 
 # insert into db
-print('Updating db ...')
-#conn = sqlite3.connect(cfg['db'], timeout=10, isolation_level=None)
-with conn:
-    c = conn.cursor()
-    #sql = 'insert or replace into file (filename, location, ncidate, size) values (?,?,?,?)'
-    sql = 'insert or ignore into file (filename, location, ncidate, size) values (?,?,?,?)'
-    #print(sql)
-    c.executemany(sql, fl)
-    c.execute('select total_changes()')
-    print('Rows modified:', c.fetchall()[0][0])
+if len(fl) > 0:
+    print('Updating db ...')
+    #conn = sqlite3.connect(cfg['db'], timeout=10, isolation_level=None)
+    with conn:
+        c = conn.cursor()
+        #sql = 'insert or replace into file (filename, location, ncidate, size) values (?,?,?,?)'
+        sql = 'insert or ignore into file (filename, location, ncidate, size) values (?,?,?,?)'
+        #print(sql)
+        c.executemany(sql, fl)
+        c.execute('select total_changes()')
+        print('Rows modified:', c.fetchall()[0][0])
 
+print('--- Done ---')
 
