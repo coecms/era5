@@ -26,6 +26,7 @@ import os
 from multiprocessing.dummy import Pool as ThreadPool
 #from multiprocessing import Pool as ThreadPool
 import subprocess as sp
+from era5_update_db import db_connect, query
 
 
 def config_log(debug):
@@ -33,7 +34,7 @@ def config_log(debug):
     # start a logger
     logger = logging.getLogger('era5log')
     # set a formatter to manage the output format of our handler
-    formatter = logging.Formatter('%(levelname) %(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter('%(levelname)s %(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
     # set era5log level explicitly otherwise it inherits the root logger level:WARNING
     # if debug: level DEBUG otherwise INFO
     # because this is the logger level it will determine the lowest possible level for thehandlers
@@ -123,6 +124,12 @@ def read_vars():
     return vardict 
 
 
+def file_exists(fn, nclist):
+    """ check if file already exists
+    """
+    return fn in nclist 
+
+
 def build_dict(dsargs, yr, mn, var, daylist, oformat):
     """Builds request dictionary to pass to retrieve command 
     """
@@ -150,17 +157,6 @@ def file_down(url, tempfn, size):
     era5log.info(f'ERA5 Downloading: {url} to {tempfn}')
     p = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
     out,err = p.communicate()
-    #if not p.returncode:            # successful
-    #    return true
-    #else:
-        #cmd = f"{cfg['resumecmd']} {tempfn} {url}"
-        #era5log.info(f'ERA5 Resuming download: {url} to {tempfn}')
-        #p1 = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
-        #out,err = p1.communicate()
-        #if not p1.returncode:            # successful
-        #    return true
-        #else:
-        #    return false
     # alternative check using actual file size
     # limited to number of retry set in config.json
     n = 0
@@ -201,7 +197,7 @@ def do_request(r):
     # the actual retrieve part
     # create client instance
     c = cdsapi.Client()
-    era5log.info(f'Downloading {tempfn} ... ')
+    era5log.info(f'Requesting {tempfn} ... ')
     era5log.info(f'Request: {r[1]}')
     # need to capture exceptions
     apirc = False
@@ -259,6 +255,8 @@ def api_request(update, oformat, stream, params, yr, mntlist):
         If download successful, compress file and move to era5/netcdf
     """
     global cfg, era5log 
+    # open connection to era5 files db 
+    conn = db_connect(cfg)
     # create empty list to  store cdsapi requests
     rqlist = []
     # list of faster ips to alternate
@@ -281,10 +279,20 @@ def api_request(update, oformat, stream, params, yr, mntlist):
         # if grib code exists but cds name is not defined skip var and print warning
         if not queue:
             continue
+    # create list of filenames already existing for this var and yr
+        sql = "select filename from file where location=?" 
+        tup = (f"netcdf/{stream}/{var}/{yr}",)
+        print(tup)
+        nclist = query(conn, sql, tup)
+        print(nclist)
     # build Copernicus requests for each month and submit it using cdsapi modified module
         for mn in mntlist:
             # for each output file build request and append to list
             stagedir, destdir, fname, daylist = target(stream, var, yr, mn, dsargs)
+    # if file already exists in datadir then skip
+            if file_exists(fname, nclist):
+                era5log.info(f'Skipping {fname} already exists')
+                continue
             rdict = build_dict(dsargs, yr, mn, cdsname, daylist, oformat)
             rqlist.append((dsargs['dsid'], rdict, os.path.join(stagedir,fname),
                            os.path.join(destdir, fname), ips[i % len(ips)])) 
@@ -294,12 +302,13 @@ def api_request(update, oformat, stream, params, yr, mntlist):
         era5log.debug(f'{rqlist}')
 
     # parallel downloads
-    pool = ThreadPool(cfg['nthreads'])
-    results = pool.map(do_request, rqlist)
-    ##results = pool.imap_unordered(do_request, rqlist)
-    ##close the pool and wait for the work to finish
-    pool.close()
-    pool.join()
+    if len(rqlist) > 0:
+        pool = ThreadPool(cfg['nthreads'])
+        results = pool.map(do_request, rqlist)
+        pool.close()
+        pool.join()
+    else:
+        era5log.info('No files to download!')
     era5log.info('--- Done ---')
 
 
