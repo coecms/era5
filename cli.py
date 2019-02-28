@@ -79,8 +79,6 @@ def api_request(update, oformat, stream, params, yr, mntlist):
         Call do_request to submit them and start parallel download
         If download successful, compress file and move to era5/netcdf
     """
-    #global era5log 
-    #print(f"api {era5log}")
     # open connection to era5 files db 
     conn = db_connect(cfg)
     # create empty list to  store cdsapi requests
@@ -108,9 +106,8 @@ def api_request(update, oformat, stream, params, yr, mntlist):
     # create list of filenames already existing for this var and yr
         sql = "select filename from file where location=?" 
         tup = (f"netcdf/{stream}/{var}/{yr}",)
-        print(tup)
         nclist = query(conn, sql, tup)
-        print(nclist)
+        era5log.debug(nclist)
     # build Copernicus requests for each month and submit it using cdsapi modified module
         for mn in mntlist:
             # for each output file build request and append to list
@@ -148,8 +145,6 @@ def era5(debug):
     """
     global era5log 
     era5log = config_log(debug)
-    # read config file
-    #cfg = read_config()
 
 
 def common_args(f):
@@ -183,7 +178,6 @@ def update(oformat, param, stream, year, month):
     """
     ####I'm separating this in update and download, so eventually update can check if no yr/mn passed or only yr passed which was the last month downloaded
     
-    #global cfg, era5log
     update = True
     api_request(update, oformat, stream, list(param), year, list(month))
 
@@ -201,9 +195,6 @@ def download(oformat, param, stream, year, month):
     \f
     Grid and other stream settings are in the stream.json file.
     """
-    #global cfg, era5log
-    #print(f"download {era5log}")
-    #print(f"download {cfg}")
     update = False
     api_request(update, oformat, stream, list(param), year, list(month))
 
