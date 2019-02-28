@@ -149,7 +149,8 @@ def era5(debug):
 
 def common_args(f):
     constraints = [
-        #click.argument('query', nargs=-1),
+        click.option('--queue', '-q', is_flag=True, default=False,
+                     help="Create json file to add request to queue"),
         click.option('--stream', '-s', required=True, type=click.Choice(['surface','wave','pressure']),
                      help="ECMWF stream currently operative analysis surface, wave or pressure levels"),
         click.option('--year', '-y', required=True,
@@ -179,7 +180,10 @@ def update(oformat, param, stream, year, month):
     ####I'm separating this in update and download, so eventually update can check if no yr/mn passed or only yr passed which was the last month downloaded
     
     update = True
-    api_request(update, oformat, stream, list(param), year, list(month))
+    if queue:
+        dump_args(update, oformat, stream, list(param), year, list(month))
+    else:    
+        api_request(update, oformat, stream, list(param), year, list(month))
 
 
 @era5.command()
@@ -196,9 +200,25 @@ def download(oformat, param, stream, year, month):
     Grid and other stream settings are in the stream.json file.
     """
     update = False
-    api_request(update, oformat, stream, list(param), year, list(month))
+    if queue:
+        dump_args(update, oformat, stream, list(param), year, list(month))
+    else:    
+        api_request(update, oformat, stream, list(param), year, list(month))
+
+
+@era5.command()
+@click.option('--file', '-f', default='/g/data/ub4/Work/Requests/requests.json',
+             help="Pass json file with list of requests, instead of arguments")
+def scan(file):
+    """ 
+    Load arguments from file instead of separately
+    """
+    
+    with open(file, 'r') as fj:
+         args = json.load(fj)
+    api_request(args['update'], args['format'], args['stream'], 
+                args['params'], args['year'], args['month'])
 
 
 if __name__ == '__main__':
     era5()
-

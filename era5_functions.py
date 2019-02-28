@@ -186,5 +186,18 @@ def target(stream, var, yr, mn, dsargs):
     fname = f"{var}_era5_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.nc"
     return stagedir, destdir, fname, daylist
 
-cfg = read_config()
 
+def dump_args(update, oformat, stream, params, year, months):
+    """
+    """
+    args['update'] = update
+    args['format'] = oformat
+    args['stream'] = stream
+    args['params'] = params
+    args['year'] = year
+    args['months'] = months
+    with open(file, 'w') as fj:
+         json.dump(args, fj)
+    return
+
+cfg = read_config()
