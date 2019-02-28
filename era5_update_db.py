@@ -7,8 +7,7 @@ from glob import glob
 import os
 from datetime import datetime
 import sqlite3
-from cli import read_config
-import sys
+from era5_functions import read_config
 
 def db_connect(cfg):
     """ connect to ERA5 files sqlite db
@@ -39,7 +38,6 @@ def main():
     xl = query(conn, sql, ())
     print(f'Records already in db: {len(xl)}')
 
-    #sys.exit()
     # get stats for all files not in db yet
     tsfmt = '%FT%T'
     fl = []

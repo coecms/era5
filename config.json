@@ -7,6 +7,7 @@
     "resumecmd": "curl -C - -o",
     "retry": 5,
     "qccmd": "gdalinfo",
-    "nccmd": "nccopy -k 4 -d5 -s"
+    "nccmd": "nccopy -k 4 -d5 -s",
+    "db": "prova.sqlite"
 }
 
