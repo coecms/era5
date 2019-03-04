@@ -187,17 +187,21 @@ def target(stream, var, yr, mn, dsargs):
     return stagedir, destdir, fname, daylist
 
 
-def dump_args(update, oformat, stream, params, year, months):
+def dump_args(up, of, st, ps, yr, mns):
+    """ Create arguments dictionary and dump to json file
     """
-    """
-    args['update'] = update
-    args['format'] = oformat
-    args['stream'] = stream
-    args['params'] = params
-    args['year'] = year
-    args['months'] = months
-    with open(file, 'w') as fj:
+    tstamp = datetime.now().strftime("%Y%m%d%H%M%S") 
+    fname = f'era5_request_{tstamp}.json'
+    args = {}
+    args['update'] = up
+    args['format'] = of
+    args['stream'] = st
+    args['params'] = ps
+    args['year'] = yr
+    args['months'] = mns
+    with open(fname, 'w+') as fj:
          json.dump(args, fj)
     return
+
 
 cfg = read_config()

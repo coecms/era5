@@ -12,13 +12,12 @@
 # Author: Paola Petrelli for ARC Centre of Excellence for Climate Extremes
 #         Matt Nethery NCI 
 # contact: paolap@utas.edu.au
-# last updated 22/02/2019
+# last updated 28/02/2019
 #!/usr/bin/python
 
 import click
 import os
 from multiprocessing.dummy import Pool as ThreadPool
-#from multiprocessing import Pool as ThreadPool
 from era5_update_db import db_connect, query
 from era5_functions import *
 
@@ -169,7 +168,7 @@ def common_args(f):
 @common_args
 @click.option('--param', '-p', multiple=True,
              help="Grib code parameter for selected variable, pass as param.table i.e. 132.128. If not passed all parametes for the stream will be updated")
-def update(oformat, param, stream, year, month):
+def update(oformat, param, stream, year, month, queue):
     """ 
     Update ERA5 variables, if regular monthly update 
     then passing only the stream argument will update
@@ -190,7 +189,7 @@ def update(oformat, param, stream, year, month):
 @common_args
 @click.option('--param', '-p', multiple=True, required=True,
              help="Grib code parameter for selected variable, pass as param.table i.e. 132.128")
-def download(oformat, param, stream, year, month):
+def download(oformat, param, stream, year, month, queue):
     """ 
     Download ERA5 variables, to be preferred 
     if adding a new variable,
@@ -213,11 +212,10 @@ def scan(file):
     """ 
     Load arguments from file instead of separately
     """
-    
     with open(file, 'r') as fj:
          args = json.load(fj)
     api_request(args['update'], args['format'], args['stream'], 
-                args['params'], args['year'], args['month'])
+                args['params'], args['year'], args['months'])
 
 
 if __name__ == '__main__':
