@@ -64,7 +64,7 @@ def do_request(r):
             # do some compression on the file - assuming 1. it's netcdf, 2. that nccopy will fail if file is corrupt
             cmd = f"{cfg['nccmd']} {tempfn} {fn}"
             p = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
-            out,err = p1.communicate()
+            out,err = p.communicate()
             if not p.returncode:       # check was successful
                 era5log.info(f'ERA5 download success: {fn}')
             else:
