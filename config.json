@@ -1,6 +1,6 @@
 {
     "nthreads": 8,
-    "datadir": "/g/data/ub4/era5",
+    "datadir": "/g/data/ub4/era5/netcdf",
     "staging": "/g/data/ub4/era5/staging",
     "getcmd": "curl -o",
     "resumewget": "wget -c -O",

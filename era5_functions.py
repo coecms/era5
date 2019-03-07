@@ -152,6 +152,8 @@ def file_down(url, tempfn, size, era5log):
     # alternative check using actual file size
     # limited to number of retry set in config.json
     n = 0
+    if os.path.getsize(tempfn) == size:
+        return True
     while os.path.getsize(tempfn) < size and n < cfg['retry']:
         cmd = f"{cfg['resumecmd']} {tempfn} {url}"
         era5log.info(f'ERA5 Resuming download {n+1}: {url} to {tempfn}')
@@ -164,7 +166,7 @@ def file_down(url, tempfn, size, era5log):
             #return False
         else:
             n+=1
-     # if there's always a returncode for all retry return false
+    # if there's always a returncode for all retry return false
     return False
     
 

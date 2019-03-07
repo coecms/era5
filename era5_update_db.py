@@ -28,7 +28,7 @@ def main():
     conn = db_connect(cfg)
 
     # List all netcdf files in datadir
-    d = os.path.join(cfg['datadir'], 'netcdf/*/*/????/*.nc')
+    d = os.path.join(cfg['datadir'], '*/*/*/*.nc')
     print(f'Searching: {d} ...')
     g = glob(d)
     print(f'Found {len(g)} files.')
@@ -42,14 +42,12 @@ def main():
     tsfmt = '%FT%T'
     fl = []
     for f in g:
-        # eventually I'll move uncompressed to staging!!
-        if not 'uncompressed' in f:
-            dn, fn = os.path.split(f)
-            if not fn in xl:
-                s = os.stat(f)
-                l = dn.replace(cfg['datadir'] + '/', '')
-                ts = datetime.fromtimestamp(s.st_mtime).strftime(tsfmt)
-                fl.append( (fn, l, ts, s.st_size) )
+        dn, fn = os.path.split(f)
+        if not fn in xl:
+            s = os.stat(f)
+            l = dn.replace(cfg['datadir'] + '/', '')
+            ts = datetime.fromtimestamp(s.st_mtime).strftime(tsfmt)
+            fl.append( (fn, l, ts, s.st_size) )
 
     print(f'New files found: {len(fl)}')
 

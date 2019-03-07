@@ -35,8 +35,6 @@ def do_request(r):
     """
     tempfn = r[2]
     fn = r[3]
-    era5log.debug(f"{tempfn}")
-    era5log.debug(f"{fn}")
   
     # the actual retrieve part
     # create client instance
@@ -62,6 +60,7 @@ def do_request(r):
             url = res.location.replace('.198/', f'.{r[4]}/')
         if file_down(url, tempfn, size, era5log):            # successful
             # do some compression on the file - assuming 1. it's netcdf, 2. that nccopy will fail if file is corrupt
+            era5log.info(f'Compressing {tempfn} ...')
             cmd = f"{cfg['nccmd']} {tempfn} {fn}"
             p = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
             out,err = p.communicate()
@@ -104,7 +103,7 @@ def api_request(update, oformat, stream, params, yr, mntlist):
             continue
     # create list of filenames already existing for this var and yr
         sql = "select filename from file where location=?" 
-        tup = (f"netcdf/{stream}/{var}/{yr}",)
+        tup = (f"{stream}/{var}/{yr}",)
         nclist = query(conn, sql, tup)
         era5log.debug(nclist)
     # build Copernicus requests for each month and submit it using cdsapi modified module
@@ -206,13 +205,13 @@ def download(oformat, param, stream, year, month, queue):
 
 
 @era5.command()
-@click.option('--file', '-f', default='/g/data/ub4/Work/Requests/requests.json',
+@click.option('--file', '-f', 'infile', default='/g/data/ub4/Work/Requests/requests.json',
              help="Pass json file with list of requests, instead of arguments")
-def scan(file):
+def scan(infile):
     """ 
     Load arguments from file instead of separately
     """
-    with open(file, 'r') as fj:
+    with open(infile, 'r') as fj:
          args = json.load(fj)
     api_request(args['update'], args['format'], args['stream'], 
                 args['params'], args['year'], args['months'])
