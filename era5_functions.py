@@ -49,10 +49,11 @@ def config_log(debug):
     logger.addHandler(clog)    
 
     # add a handler to send INFO level messages to file 
-    # the messagges will be appended to the same file
+    # the messages will be appended to the same file
     # create a new log file every day 
     date = datetime.now().strftime("%Y%m%d") 
-    logname = '/g/data/ub4/Work/Logs/ERA5/era5_log_' + date + '.txt' 
+    #logname = '/g/data/ub4/Work/Logs/ERA5/era5_log_' + date + '.txt' 
+    logname = cfg['logdir'] + 'era5_log_' + date + '.txt' 
     flog = logging.FileHandler(logname) 
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);

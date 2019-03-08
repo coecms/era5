@@ -82,7 +82,8 @@ def api_request(update, oformat, stream, params, yr, mntlist):
     # create empty list to  store cdsapi requests
     rqlist = []
     # list of faster ips to alternate
-    ips = ['110', '210']
+    #ips = ['110', '210']
+    ips = cfg['altips']
     i = 0 
     # assign year and list of months
     if mntlist == []:  
