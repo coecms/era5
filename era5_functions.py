@@ -53,7 +53,7 @@ def config_log(debug):
     # create a new log file every day 
     date = datetime.now().strftime("%Y%m%d") 
     #logname = '/g/data/ub4/Work/Logs/ERA5/era5_log_' + date + '.txt' 
-    logname = cfg['logdir'] + 'era5_log_' + date + '.txt' 
+    logname = cfg['logdir'] + '/era5_log_' + date + '.txt' 
     flog = logging.FileHandler(logname) 
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
