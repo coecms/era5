@@ -7,6 +7,7 @@
 # set some vars
 LOCKFILE="/tmp/era5_wrapper.lock"
 TSTAMP=$(date -u +%Y%m%dT%H%M%S)
+cd $HOME/ERA5
 REQUESTDIR="./requests-matt"
 
 echo "--- Starting $0 ($TSTAMP) ---"
@@ -14,7 +15,7 @@ echo "--- Starting $0 ($TSTAMP) ---"
 # set exclusive lock
 echo "Setting lock ..."
 exec 8>$LOCKFILE
-flock -nx 8 || exit 1
+flock -nx 8 || echo "  already locked - exiting!"; exit 1
 
 # set the environment, load required modules
 echo "Loading modules ..."
@@ -31,7 +32,7 @@ echo "Starting download ..."
 REQUESTS="$(ls $REQUESTDIR/era5_request*.json)"
 for J in $REQUESTS ; do
   echo "  $J"
-  python3 cli.py scan -f $J >/dev/null
+  python3 cli.py scan -f $J 1>logs/era5_error.log 2>&1
   #python3 cli.py scan -f $J
 done
 
