@@ -9,7 +9,7 @@
     "retry": 5,
     "qccmd": "gdalinfo",
     "nccmd": "nccopy -k 4 -d5 -s",
-    "db": "prova.sqlite",
+    "db": "era5.sqlite",
     "altips": [ "110", "153", "210" ]
 }
 
