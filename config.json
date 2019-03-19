@@ -9,7 +9,8 @@
     "retry": 5,
     "qccmd": "gdalinfo",
     "nccmd": "nccopy -k 4 -d5 -s",
-    "db": "prova.sqlite",
-    "altips": [ "110", "153", "210" ]
+    "db": "era5.sqlite",
+    "slowips": [ "198" ],
+    "altips": [ "105", "110", "153", "201", "210", "235", "236" ]
 }
 
