@@ -88,6 +88,11 @@ def api_request(update, oformat, stream, params, yr, mntlist):
     ips = cfg['altips']
     i = 0 
     # assign year and list of months
+    if type(yr) is list:
+        yrs = yr
+    else:
+        yrs = [yr]
+
     if mntlist == []:  
         mntlist = ["%.2d" % i for i in range(1,13)]
     # retrieve stream arguments
@@ -105,24 +110,27 @@ def api_request(update, oformat, stream, params, yr, mntlist):
         if not queue:
             continue
     # create list of filenames already existing for this var and yr
+        nclist = []
         sql = "select filename from file where location=?" 
-        tup = (f"{stream}/{var}/{yr}",)
-        nclist = query(conn, sql, tup)
+        for y in yrs:
+            tup = (f"{stream}/{var}/{y}",)
+            nclist += query(conn, sql, tup)
         era5log.debug(nclist)
     # build Copernicus requests for each month and submit it using cdsapi modified module
         for mn in mntlist:
             # for each output file build request and append to list
-            stagedir, destdir, fname, daylist = target(stream, var, yr, mn, dsargs)
-    # if file already exists in datadir then skip
-            if file_exists(fname, nclist):
-                era5log.info(f'Skipping {fname} already exists')
-                continue
-            rdict = build_dict(dsargs, yr, mn, cdsname, daylist, oformat)
-            rqlist.append((dsargs['dsid'], rdict, os.path.join(stagedir,fname),
+            for y in yrs:
+                stagedir, destdir, fname, daylist = target(stream, var, y, mn, dsargs)
+                # if file already exists in datadir then skip
+                if file_exists(fname, nclist):
+                    era5log.info(f'Skipping {fname} already exists')
+                    continue
+                rdict = build_dict(dsargs, y, mn, cdsname, daylist, oformat)
+                rqlist.append((dsargs['dsid'], rdict, os.path.join(stagedir,fname),
                            os.path.join(destdir, fname), ips[i % len(ips)])) 
-            # progress index to alternate between ips
-            i+=1
-            era5log.info(f'Added request for {fname}')
+                # progress index to alternate between ips
+                i+=1
+                era5log.info(f'Added request for {fname}')
         era5log.debug(f'{rqlist}')
 
     # parallel downloads

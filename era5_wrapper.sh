@@ -7,9 +7,10 @@
 # set some vars
 LOCKFILE="/tmp/era5_wrapper.lock"
 TSTAMP=$(date -u +%Y%m%dT%H%M%S)
-ERRORLOG="/g/data/ub4/Work/Logs/ERA5/era5_wrapper_error.log"
+#ERRORLOG="/g/data/ub4/Work/Logs/ERA5/era5_wrapper_error.log"
 SCRIPTDIR=$(dirname $0)
 cd $SCRIPTDIR
+ERRORLOG="../log/ERA5/era5_wrapper_error.log"
 REQUESTDIR="../requests"
 
 echo "--- Starting $0 ($TSTAMP) ---"
