@@ -10,7 +10,7 @@ TSTAMP=$(date -u +%Y%m%dT%H%M%S)
 ERRORLOG="/g/data/ub4/Work/Logs/ERA5/era5_wrapper_error.log"
 SCRIPTDIR=$(dirname $0)
 cd $SCRIPTDIR
-REQUESTDIR="./Requests"
+REQUESTDIR="../requests"
 
 echo "--- Starting $0 ($TSTAMP) ---"
 
