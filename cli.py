@@ -56,8 +56,10 @@ def do_request(r):
         url = res.location
         # get size from response to check file complete
         size = res.content_length
-        if '.198/' in res.location:
-            url = res.location.replace('.198/', f'.{r[4]}/')
+        # check for slow IPs
+        for ip in cfg['slowips']:
+            if f'.{ip}/' in res.location:
+                url = res.location.replace(f'.{ip}/', f'.{r[4]}/')
         if file_down(url, tempfn, size, era5log):            # successful
             # do some compression on the file - assuming 1. it's netcdf, 2. that nccopy will fail if file is corrupt
             era5log.info(f'Compressing {tempfn} ...')
