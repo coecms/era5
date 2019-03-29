@@ -103,23 +103,27 @@ def api_request(update, oformat, stream, params, yr, mntlist):
     # define params to download
     if update and params == []:
         params = dsargs['params']
-    # loop through params and months requested
-    for varp in params:
-        queue, var, cdsname =  define_var(vardict, varp)
-        # if grib code exists but cds name is not defined skip var and print warning
-        if not queue:
-            continue
-    # create list of filenames already existing for this var and yr
-        nclist = []
-        sql = "select filename from file where location=?" 
-        for y in yrs:
-            tup = (f"{stream}/{var}/{y}",)
-            nclist += query(conn, sql, tup)
-        era5log.debug(nclist)
-    # build Copernicus requests for each month and submit it using cdsapi modified module
+    
+    # according to ECMWF, best to loop through years and months and do either multiple
+    # variables in one request, or at least loop through variables in the innermost loop.
+    
+    for y in yrs:
+        # build Copernicus requests for each month and submit it using cdsapi modified module
         for mn in mntlist:
             # for each output file build request and append to list
-            for y in yrs:
+            # loop through params and months requested
+            for varp in params:
+                queue, var, cdsname =  define_var(vardict, varp)
+                # if grib code exists but cds name is not defined skip var and print warning
+                if not queue:
+                    continue
+                # create list of filenames already existing for this var and yr
+                nclist = []
+                sql = "select filename from file where location=?" 
+                tup = (f"{stream}/{var}/{y}",)
+                nclist += query(conn, sql, tup)
+                era5log.debug(nclist)
+
                 stagedir, destdir, fname, daylist = target(stream, var, y, mn, dsargs)
                 # if file already exists in datadir then skip
                 if file_exists(fname, nclist):
@@ -131,7 +135,8 @@ def api_request(update, oformat, stream, params, yr, mntlist):
                 # progress index to alternate between ips
                 i+=1
                 era5log.info(f'Added request for {fname}')
-        era5log.debug(f'{rqlist}')
+    
+    era5log.debug(f'{rqlist}')
 
     # parallel downloads
     if len(rqlist) > 0:
