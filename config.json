@@ -2,7 +2,7 @@
     "nthreads": 8,
     "datadir": "/g/data/ub4/era5/netcdf",
     "staging": "/g/data/ub4/era5/staging",
-    "logdir": "/g/data/ub4/Work/Logs/ERA5",
+    "logdir": "../log",
     "getcmd": "curl -o",
     "resumewget": "wget -c -O",
     "resumecmd": "curl -C - -o",

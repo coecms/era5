@@ -140,8 +140,14 @@ def api_request(update, oformat, stream, params, yr, mntlist):
 
     # parallel downloads
     if len(rqlist) > 0:
-        pool = ThreadPool(cfg['nthreads'])
-        results = pool.map(do_request, rqlist)
+        # set num of threads = number of params, or use default from config
+        if len(params) > 1:
+            nthreads = len(params)
+        else:
+            nthreads = cfg['nthreads']
+        pool = ThreadPool(nthreads)
+        #pool = ThreadPool(cfg['nthreads'])
+        results = pool.imap(do_request, rqlist)
         pool.close()
         pool.join()
     else:
