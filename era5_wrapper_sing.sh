@@ -4,6 +4,8 @@
 #
 # Usage: era5_wrapper.sh
 
+# NOTE: cdsapi requires an authentication token: $HOME/.cdsapirc
+
 # set some vars
 LOCKFILE="/tmp/era5_wrapper.lock"
 TSTAMP=$(date -u +%Y%m%dT%H%M%S)
@@ -12,6 +14,7 @@ SCRIPTDIR=$(dirname $0)
 cd $SCRIPTDIR
 ERRORLOG="../log/era5_wrapper_error.log"
 REQUESTDIR="../requests"
+PATH=/opt/conda/bin:$PATH
 
 echo "--- Starting $0 ($TSTAMP) ---"
 
@@ -27,14 +30,15 @@ if [ "$LOCKED" == "YES" ] ; then
 fi
 
 # set the environment, load required modules
-echo "Loading modules ..."
-module load python3/3.6.2 netcdf
-export LANG=en_AU.utf8
-export LC_ALL=$LANG
+#echo "Loading modules ..."
+#module load python3/3.6.2 netcdf
+#export LANG=en_AU.utf8
+#export LC_ALL=$LANG
 
 # refresh requests
 # couple of options: git pull; or rsync ; or nothing
 echo "Checking for new requests ..."
+rsync -v /g/data/ub4/Work/Scripts/ERA5/Requests/*.json $REQUESTDIR/
 REQUESTS="$(ls $REQUESTDIR/era5_request*.json)"
 
 # loop through list of request files and run the download command
@@ -42,11 +46,11 @@ echo "Starting download ..."
 for J in $REQUESTS ; do
   echo "  $J"
   python3 cli.py scan -f $J 1>/dev/null 2>>$ERRORLOG
-  #python3 cli.py scan -f $J
+  #echo python3 cli.py scan -f $J
 done
 
 # update sqlite db
 echo "Updating database ..."
 python3 era5_update_db.py
 
-echo "--- Done ---"
+echo "--- Wrapper done ---"

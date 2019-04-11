@@ -56,8 +56,10 @@ def do_request(r):
         url = res.location
         # get size from response to check file complete
         size = res.content_length
-        if '.198/' in res.location:
-            url = res.location.replace('.198/', f'.{r[4]}/')
+        # check for slow IPs
+        for ip in cfg['slowips']:
+            if f'.{ip}/' in res.location:
+                url = res.location.replace(f'.{ip}/', f'.{r[4]}/')
         if file_down(url, tempfn, size, era5log):            # successful
             # do some compression on the file - assuming 1. it's netcdf, 2. that nccopy will fail if file is corrupt
             era5log.info(f'Compressing {tempfn} ...')
@@ -86,6 +88,11 @@ def api_request(update, oformat, stream, params, yr, mntlist):
     ips = cfg['altips']
     i = 0 
     # assign year and list of months
+    if type(yr) is list:
+        yrs = yr
+    else:
+        yrs = [yr]
+
     if mntlist == []:  
         mntlist = ["%.2d" % i for i in range(1,13)]
     # retrieve stream arguments
@@ -96,37 +103,51 @@ def api_request(update, oformat, stream, params, yr, mntlist):
     # define params to download
     if update and params == []:
         params = dsargs['params']
-    # loop through params and months requested
-    for varp in params:
-        queue, var, cdsname =  define_var(vardict, varp)
-        # if grib code exists but cds name is not defined skip var and print warning
-        if not queue:
-            continue
-    # create list of filenames already existing for this var and yr
-        sql = "select filename from file where location=?" 
-        tup = (f"{stream}/{var}/{yr}",)
-        nclist = query(conn, sql, tup)
-        era5log.debug(nclist)
-    # build Copernicus requests for each month and submit it using cdsapi modified module
+    
+    # according to ECMWF, best to loop through years and months and do either multiple
+    # variables in one request, or at least loop through variables in the innermost loop.
+    
+    for y in yrs:
+        # build Copernicus requests for each month and submit it using cdsapi modified module
         for mn in mntlist:
             # for each output file build request and append to list
-            stagedir, destdir, fname, daylist = target(stream, var, yr, mn, dsargs)
-    # if file already exists in datadir then skip
-            if file_exists(fname, nclist):
-                era5log.info(f'Skipping {fname} already exists')
-                continue
-            rdict = build_dict(dsargs, yr, mn, cdsname, daylist, oformat)
-            rqlist.append((dsargs['dsid'], rdict, os.path.join(stagedir,fname),
+            # loop through params and months requested
+            for varp in params:
+                queue, var, cdsname =  define_var(vardict, varp)
+                # if grib code exists but cds name is not defined skip var and print warning
+                if not queue:
+                    continue
+                # create list of filenames already existing for this var and yr
+                nclist = []
+                sql = "select filename from file where location=?" 
+                tup = (f"{stream}/{var}/{y}",)
+                nclist += query(conn, sql, tup)
+                era5log.debug(nclist)
+
+                stagedir, destdir, fname, daylist = target(stream, var, y, mn, dsargs)
+                # if file already exists in datadir then skip
+                if file_exists(fname, nclist):
+                    era5log.info(f'Skipping {fname} already exists')
+                    continue
+                rdict = build_dict(dsargs, y, mn, cdsname, daylist, oformat)
+                rqlist.append((dsargs['dsid'], rdict, os.path.join(stagedir,fname),
                            os.path.join(destdir, fname), ips[i % len(ips)])) 
-            # progress index to alternate between ips
-            i+=1
-            era5log.info(f'Added request for {fname}')
-        era5log.debug(f'{rqlist}')
+                # progress index to alternate between ips
+                i+=1
+                era5log.info(f'Added request for {fname}')
+    
+    era5log.debug(f'{rqlist}')
 
     # parallel downloads
     if len(rqlist) > 0:
-        pool = ThreadPool(cfg['nthreads'])
-        results = pool.map(do_request, rqlist)
+        # set num of threads = number of params, or use default from config
+        if len(params) > 1:
+            nthreads = len(params)
+        else:
+            nthreads = cfg['nthreads']
+        pool = ThreadPool(nthreads)
+        #pool = ThreadPool(cfg['nthreads'])
+        results = pool.imap(do_request, rqlist)
         pool.close()
         pool.join()
     else:
