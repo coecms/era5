@@ -38,7 +38,7 @@ fi
 # refresh requests
 # couple of options: git pull; or rsync ; or nothing
 echo "Checking for new requests ..."
-rsync -v /g/data/ub4/Work/Scripts/ERA5/Requests/*.json $REQUESTDIR/
+rsync -vut /g/data/ub4/Work/Scripts/ERA5/Requests/*.json $REQUESTDIR/
 REQUESTS="$(ls $REQUESTDIR/era5_request*.json)"
 
 # loop through list of request files and run the download command
