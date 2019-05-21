@@ -131,6 +131,6 @@
  "237.140": ["shts", "significant_height_of_total_swell"],
  "238.140": ["mdts", "mean_direction_of_total_swell"],
  "239.140": ["mpts", "mean_period_of_total_swell"],
- "245.140": ["wind", "10m_wind_speed"],
- "249.140": ["dwi", "10m_wind_direction"],
+ "245.140": ["wind", "ocean_surface_stress_equivalent_10m_neutral_wind_speed"],
+ "249.140": ["dwi", "ocean_surface_stress_equivalent_10m_neutral_wind_direction"],
  "132.228": ["v10n", "10m_v_component_of_neutral_wind"]}
