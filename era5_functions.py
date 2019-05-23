@@ -88,7 +88,7 @@ def define_dates(yr,mn):
     return daylist 
 
 
-def define_var(vardict, varparam):
+def define_var(vardict, varparam, era5log):
     """ Find grib code in vardict dictionary and return relevant info
     """
     queue = True
@@ -101,12 +101,15 @@ def define_var(vardict, varparam):
     return queue, name, cds_name
 
 
-def define_args(stream):
+def define_args(stream, tstep):
     ''' Return parameters and levels lists and step, time depending on stream type'''
     # this import the stream_dict dictionary <stream> : ['time','step','params','levels']
     # I'm getting the information which is common to all pressure/surface/wave variables form here, plus a list of the variables we download for each stream
     with open(f'era5_{stream}.json', 'r') as fj:
         dsargs = json.load(fj)
+    if tstep == 'mon':
+        dsargs['dsid'] += '-monthly-means'
+        dsargs['product_type'] = 'monthly-averaged-reanalysis'
     return  dsargs
 
 
@@ -124,20 +127,23 @@ def file_exists(fn, nclist):
     return fn in nclist 
 
 
-def build_dict(dsargs, yr, mn, var, daylist, oformat):
+def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep):
     """Builds request dictionary to pass to retrieve command 
     """
     timelist = ["%.2d:00" % i for i in range(24)]
-    rdict={ 'product_type':'reanalysis',
+    rdict={ 'product_type': dsargs['product_type'],
             'variable'    : var,
             'year'        : str(yr),
             'month'       : str(mn),
-            'day'         : daylist,
-            'time'       : timelist,
             'format'      : oformat,
             'area'        : dsargs['area']} 
     if dsargs['levels'] != []:
         rdict['pressure_level']= dsargs['levels']
+    if tstep == 'mon':
+        rdict['time'] = '00:00'
+    else:
+        rdict['day'] = daylist
+        rdict['time'] = timelist
     return rdict 
 
 
@@ -171,26 +177,32 @@ def file_down(url, tempfn, size, era5log):
     return False
     
 
-def target(stream, var, yr, mn, dsargs):
+def target(stream, var, yr, mn, dsargs, tstep):
     """Build output paths and filename, 
        build list of days to process based on year and month
     """
     # set output path
-    stagedir = os.path.join(cfg['staging'],stream, var,yr)
-    destdir = os.path.join(cfg['datadir'],stream,var,yr)
+    if tstep == 'mon':
+        ydir = 'monthly'
+        fname = f"{var}_era5_mon_{dsargs['grid']}_{yr}{mn}.nc"
+        daylist = []
+    else:
+        ydir = yr
+    # define filename based on var, yr, mn and stream attributes
+        startmn=mn
+        daylist = define_dates(yr,mn) 
+        fname = f"{var}_era5_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.nc"
+    stagedir = os.path.join(cfg['staging'],stream, var,ydir)
+    destdir = os.path.join(cfg['datadir'],stream,var,ydir)
     # create path if required
     if not os.path.exists(stagedir):
             os.makedirs(stagedir)
     if not os.path.exists(destdir):
             os.makedirs(destdir)
-    # define filename based on var, yr, mn and stream attributes
-    startmn=mn
-    daylist = define_dates(yr,mn) 
-    fname = f"{var}_era5_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.nc"
     return stagedir, destdir, fname, daylist
 
 
-def dump_args(up, of, st, ps, yr, mns):
+def dump_args(up, of, st, ps, yr, mns, tstep):
     """ Create arguments dictionary and dump to json file
     """
     tstamp = datetime.now().strftime("%Y%m%d%H%M%S") 
@@ -202,6 +214,7 @@ def dump_args(up, of, st, ps, yr, mns):
     args['params'] = ps
     args['year'] = yr
     args['months'] = mns
+    args['timestep'] = tstep
     with open(fname, 'w+') as fj:
          json.dump(args, fj)
     return
