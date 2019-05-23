@@ -10,8 +10,7 @@
     "qccmd": "gdalinfo",
     "nccmd": "nccopy -k 4 -d5 -s",
     "db": "era5.sqlite",
-    "altips": [ "110", "153", "210" ]
+    "altips": [ "110", "153", "210" ],
     "slowips": [ "198" ],
     "altips": [ "105", "110", "153", "201", "210", "235", "236" ]
 }
-
