@@ -105,11 +105,8 @@ def define_args(stream, tstep):
     ''' Return parameters and levels lists and step, time depending on stream type'''
     # this import the stream_dict dictionary <stream> : ['time','step','params','levels']
     # I'm getting the information which is common to all pressure/surface/wave variables form here, plus a list of the variables we download for each stream
-    with open(f'era5_{stream}.json', 'r') as fj:
+    with open(f'era5_{stream}_{tstep}.json', 'r') as fj:
         dsargs = json.load(fj)
-    if tstep == 'mon':
-        dsargs['dsid'] += '-monthly-means'
-        dsargs['product_type'] = 'monthly-averaged-reanalysis'
     return  dsargs
 
 

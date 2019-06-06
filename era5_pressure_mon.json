@@ -1,8 +1,8 @@
 {
-    "product_type":"reanalysis",
+    "product_type":"monthly_averaged_reanalysis",
     "area": "20/78/-57/-140",
-    "dsid": "reanalysis-era5-pressure-levels",
-    "grid": "aus",
+    "dsid": "reanalysis-era5-pressure-levels-monthly-means",
+    "grid": "global",
     "levels": [
         "1",
         "2",
@@ -43,10 +43,5 @@
         "1000"
     ],
     "params": [
-        "129.128",
-        "130.128",
-        "131.128",
-        "132.128",
-        "157.128"
     ]
 }
