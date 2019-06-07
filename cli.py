@@ -147,7 +147,6 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep):
         else:
             nthreads = cfg['nthreads']
         pool = ThreadPool(nthreads)
-        #pool = ThreadPool(cfg['nthreads'])
         results = pool.imap(do_request, rqlist)
         pool.close()
         pool.join()
