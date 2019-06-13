@@ -17,6 +17,7 @@
 
 import click
 import os
+import sys
 from multiprocessing.dummy import Pool as ThreadPool
 from era5_update_db import db_connect, query
 from era5_functions import *
@@ -74,7 +75,7 @@ def do_request(r):
 
 
 
-def api_request(update, oformat, stream, params, yr, mntlist, tstep):
+def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
     """ Build a list of CDSapi requests based on arguments
         Call do_request to submit them and start parallel download
         If download successful, compress file and move to era5/netcdf
@@ -125,12 +126,12 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep):
                 nclist += query(conn, sql, tup)
                 era5log.debug(nclist)
 
-                stagedir, destdir, fname, daylist = target(stream, var, y, mn, dsargs, tstep)
+                stagedir, destdir, fname, daylist = target(stream, var, y, mn, dsargs, tstep, back)
                 # if file already exists in datadir then skip
                 if file_exists(fname, nclist):
                     era5log.info(f'Skipping {fname} already exists')
                     continue
-                rdict = build_dict(dsargs, y, mn, cdsname, daylist, oformat, tstep)
+                rdict = build_dict(dsargs, y, mn, cdsname, daylist, oformat, tstep, back)
                 rqlist.append((dsargs['dsid'], rdict, os.path.join(stagedir,fname),
                            os.path.join(destdir, fname), ips[i % len(ips)])) 
                 # progress index to alternate between ips
@@ -179,6 +180,8 @@ def common_args(f):
                      help="month/s to download, if not specified all months for year will be downloaded "),
         click.option('--timestep', '-t', type=click.Choice(['mon','hr']), default='hr',
                      help="timestep hr or mon, if not specified hr"),
+        click.option('--back', '-b', is_flag=True, default=False,
+                     help="Request backwards all years and months as one file, works only for monthly data"),
         click.option('--format', 'oformat', type=click.Choice(['grib','netcdf']), default='netcdf',
                      help="Format output: grib or netcdf")
     ]
@@ -191,7 +194,7 @@ def common_args(f):
 @common_args
 @click.option('--param', '-p', multiple=True,
              help="Grib code parameter for selected variable, pass as param.table i.e. 132.128. If not passed all parametes for the stream will be updated")
-def update(oformat, param, stream, year, month, timestep, queue):
+def update(oformat, param, stream, year, month, timestep, back, queue):
     """ 
     Update ERA5 variables, if regular monthly update 
     then passing only the stream argument will update
@@ -202,17 +205,20 @@ def update(oformat, param, stream, year, month, timestep, queue):
     ####I'm separating this in update and , so eventually update can check if no yr/mn passed or only yr passed which was the last month downloaded
     
     update = True
+    if back:
+        print('You cannot use the backwards option with update')
+        sys.exit()
     if queue:
-        dump_args(update, oformat, stream, list(param), year, list(month), timestep)
+        dump_args(update, oformat, stream, list(param), year, list(month), timestep, back)
     else:    
-        api_request(update, oformat, stream, list(param), year, list(month), timestep)
+        api_request(update, oformat, stream, list(param), year, list(month), timestep, back)
 
 
 @era5.command()
 @common_args
 @click.option('--param', '-p', multiple=True, required=True,
              help="Grib code parameter for selected variable, pass as param.table i.e. 132.128")
-def download(oformat, param, stream, year, month, timestep, queue):
+def download(oformat, param, stream, year, month, timestep, back, queue):
     """ 
     Download ERA5 variables, to be preferred 
     if adding a new variable,
@@ -222,11 +228,14 @@ def download(oformat, param, stream, year, month, timestep, queue):
     Grid and other stream settings are in the stream.json file.
     """
     update = False
+    if back and timestep != 'mon':
+        print('You can the backwards option only with monthly data')
+        sys.exit()
     print(timestep)
     if queue:
-        dump_args(update, oformat, stream, list(param), year, list(month), timestep)
+        dump_args(update, oformat, stream, list(param), year, list(month), timestep, back)
     else:    
-        api_request(update, oformat, stream, list(param), year, list(month), timestep)
+        api_request(update, oformat, stream, list(param), year, list(month), timestep, back)
 
 
 @era5.command()
@@ -240,7 +249,7 @@ def scan(infile):
          args = json.load(fj)
     api_request(args['update'], args['format'], args['stream'], 
                 args['params'], args['year'], args['months'], 
-                args['timestep'])
+                args['timestep'], args['back'])
 
 
 if __name__ == '__main__':

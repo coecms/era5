@@ -124,7 +124,7 @@ def file_exists(fn, nclist):
     return fn in nclist 
 
 
-def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep):
+def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep, back):
     """Builds request dictionary to pass to retrieve command 
     """
     timelist = ["%.2d:00" % i for i in range(24)]
@@ -138,6 +138,9 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep):
         rdict['pressure_level']= dsargs['levels']
     if tstep == 'mon':
         rdict['time'] = '00:00'
+        if back:
+            rdict['month'] = ["%.2d" % i for i in range(1,13)]
+            rdict['year'] = ["%.2d" % i for i in range(1979,2019)]
     else:
         rdict['day'] = daylist
         rdict['time'] = timelist
@@ -174,7 +177,7 @@ def file_down(url, tempfn, size, era5log):
     return False
     
 
-def target(stream, var, yr, mn, dsargs, tstep):
+def target(stream, var, yr, mn, dsargs, tstep, back):
     """Build output paths and filename, 
        build list of days to process based on year and month
     """
@@ -183,6 +186,8 @@ def target(stream, var, yr, mn, dsargs, tstep):
         ydir = 'monthly'
         fname = f"{var}_era5_mon_{dsargs['grid']}_{yr}{mn}.nc"
         daylist = []
+        if back:
+            fname = f"{var}_era5_mon_{dsargs['grid']}_197901_201812.nc"
     else:
         ydir = yr
     # define filename based on var, yr, mn and stream attributes
@@ -199,7 +204,7 @@ def target(stream, var, yr, mn, dsargs, tstep):
     return stagedir, destdir, fname, daylist
 
 
-def dump_args(up, of, st, ps, yr, mns, tstep):
+def dump_args(up, of, st, ps, yr, mns, tstep, back):
     """ Create arguments dictionary and dump to json file
     """
     tstamp = datetime.now().strftime("%Y%m%d%H%M%S") 
@@ -212,6 +217,7 @@ def dump_args(up, of, st, ps, yr, mns, tstep):
     args['year'] = yr
     args['months'] = mns
     args['timestep'] = tstep
+    args['back'] = back
     with open(fname, 'w+') as fj:
          json.dump(args, fj)
     return
