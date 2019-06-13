@@ -74,7 +74,7 @@ def do_request(r):
 
 
 
-def api_request(update, oformat, stream, params, yr, mntlist):
+def api_request(update, oformat, stream, params, yr, mntlist, tstep):
     """ Build a list of CDSapi requests based on arguments
         Call do_request to submit them and start parallel download
         If download successful, compress file and move to era5/netcdf
@@ -84,7 +84,6 @@ def api_request(update, oformat, stream, params, yr, mntlist):
     # create empty list to  store cdsapi requests
     rqlist = []
     # list of faster ips to alternate
-    #ips = ['110', '210']
     ips = cfg['altips']
     i = 0 
     # assign year and list of months
@@ -96,7 +95,7 @@ def api_request(update, oformat, stream, params, yr, mntlist):
     if mntlist == []:  
         mntlist = ["%.2d" % i for i in range(1,13)]
     # retrieve stream arguments
-    dsargs = define_args(stream)
+    dsargs = define_args(stream, tstep)
     era5log.debug(f'Stream attributes: {dsargs}')
     # get variables details from json file
     vardict = read_vars()
@@ -113,7 +112,7 @@ def api_request(update, oformat, stream, params, yr, mntlist):
             # for each output file build request and append to list
             # loop through params and months requested
             for varp in params:
-                queue, var, cdsname =  define_var(vardict, varp)
+                queue, var, cdsname =  define_var(vardict, varp, era5log)
                 # if grib code exists but cds name is not defined skip var and print warning
                 if not queue:
                     continue
@@ -121,15 +120,17 @@ def api_request(update, oformat, stream, params, yr, mntlist):
                 nclist = []
                 sql = "select filename from file where location=?" 
                 tup = (f"{stream}/{var}/{y}",)
+                if tstep == 'mon':
+                    tup = (f"{stream}/{var}/monthly",)
                 nclist += query(conn, sql, tup)
                 era5log.debug(nclist)
 
-                stagedir, destdir, fname, daylist = target(stream, var, y, mn, dsargs)
+                stagedir, destdir, fname, daylist = target(stream, var, y, mn, dsargs, tstep)
                 # if file already exists in datadir then skip
                 if file_exists(fname, nclist):
                     era5log.info(f'Skipping {fname} already exists')
                     continue
-                rdict = build_dict(dsargs, y, mn, cdsname, daylist, oformat)
+                rdict = build_dict(dsargs, y, mn, cdsname, daylist, oformat, tstep)
                 rqlist.append((dsargs['dsid'], rdict, os.path.join(stagedir,fname),
                            os.path.join(destdir, fname), ips[i % len(ips)])) 
                 # progress index to alternate between ips
@@ -146,7 +147,6 @@ def api_request(update, oformat, stream, params, yr, mntlist):
         else:
             nthreads = cfg['nthreads']
         pool = ThreadPool(nthreads)
-        #pool = ThreadPool(cfg['nthreads'])
         results = pool.imap(do_request, rqlist)
         pool.close()
         pool.join()
@@ -177,6 +177,8 @@ def common_args(f):
                      help="year to download"),
         click.option('--month', '-m', multiple=True,
                      help="month/s to download, if not specified all months for year will be downloaded "),
+        click.option('--timestep', '-t', type=click.Choice(['mon','hr']), default='hr',
+                     help="timestep hr or mon, if not specified hr"),
         click.option('--format', 'oformat', type=click.Choice(['grib','netcdf']), default='netcdf',
                      help="Format output: grib or netcdf")
     ]
@@ -189,7 +191,7 @@ def common_args(f):
 @common_args
 @click.option('--param', '-p', multiple=True,
              help="Grib code parameter for selected variable, pass as param.table i.e. 132.128. If not passed all parametes for the stream will be updated")
-def update(oformat, param, stream, year, month, queue):
+def update(oformat, param, stream, year, month, timestep, queue):
     """ 
     Update ERA5 variables, if regular monthly update 
     then passing only the stream argument will update
@@ -197,20 +199,20 @@ def update(oformat, param, stream, year, month, queue):
     \f
     Grid and other stream settings are in the era5_<stream>.json file.
     """
-    ####I'm separating this in update and download, so eventually update can check if no yr/mn passed or only yr passed which was the last month downloaded
+    ####I'm separating this in update and , so eventually update can check if no yr/mn passed or only yr passed which was the last month downloaded
     
     update = True
     if queue:
-        dump_args(update, oformat, stream, list(param), year, list(month))
+        dump_args(update, oformat, stream, list(param), year, list(month), timestep)
     else:    
-        api_request(update, oformat, stream, list(param), year, list(month))
+        api_request(update, oformat, stream, list(param), year, list(month), timestep)
 
 
 @era5.command()
 @common_args
 @click.option('--param', '-p', multiple=True, required=True,
              help="Grib code parameter for selected variable, pass as param.table i.e. 132.128")
-def download(oformat, param, stream, year, month, queue):
+def download(oformat, param, stream, year, month, timestep, queue):
     """ 
     Download ERA5 variables, to be preferred 
     if adding a new variable,
@@ -220,10 +222,11 @@ def download(oformat, param, stream, year, month, queue):
     Grid and other stream settings are in the stream.json file.
     """
     update = False
+    print(timestep)
     if queue:
-        dump_args(update, oformat, stream, list(param), year, list(month))
+        dump_args(update, oformat, stream, list(param), year, list(month), timestep)
     else:    
-        api_request(update, oformat, stream, list(param), year, list(month))
+        api_request(update, oformat, stream, list(param), year, list(month), timestep)
 
 
 @era5.command()
@@ -236,7 +239,8 @@ def scan(infile):
     with open(infile, 'r') as fj:
          args = json.load(fj)
     api_request(args['update'], args['format'], args['stream'], 
-                args['params'], args['year'], args['months'])
+                args['params'], args['year'], args['months'], 
+                args['timestep'])
 
 
 if __name__ == '__main__':
