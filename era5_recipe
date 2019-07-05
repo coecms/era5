@@ -1,0 +1,34 @@
+# Singularity recipe to build an image to run  era5 workflow
+# mgn900 (20190410)
+
+Bootstrap: docker
+From: centos
+
+%runscript
+    exec echo "Centos7 image for use with era5"
+
+%files
+    # src dest
+
+%environment
+    # export XYZ=/blah/
+
+%labels
+   AUTHOR mgn900@nci.org.au
+
+%post
+    #echo "The post section is where you can install, and configure your container."
+    #
+    yum -y update && yum -y install epel-release openssl openssl-dev mesa-libGL
+    yum -y install git wget vim tmux atop dstat bzip2 netcdf
+    #
+    # install conda and ...
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    sh ./Miniconda3-latest-Linux-x86_64.sh -b -f -p /opt/conda
+    export PATH=/opt/conda/bin:$PATH
+    pip install click
+    #conda install -y gdal pillow requests matplotlib
+    #
+    # make mount points
+    mkdir -p /g/data/ub4 /g/data/id28
+
