@@ -12,7 +12,7 @@ db = connect()
 clefdb = db.session
 vals = clefdb.query(ECMWF).filter(ECMWF.cds_name != "").all()
 vars={}
-print(dir(vals[0]))
+#print(dir(vals[0]))
 for v in vals:
     vars[v.code] = (v.name, v.cds_name)
 
