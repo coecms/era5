@@ -1,9 +1,13 @@
 {
+    "product_type":"reanalysis",
     "area": "90/-180/-90/179.5",
     "dsid": "reanalysis-era5-single-levels",
     "grid": "global",
     "levels": [],
     "params": [
+        "121.140",
+        "122.140",
+        "123.140",
         "208.140",
         "215.140",
         "216.140",

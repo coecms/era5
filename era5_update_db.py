@@ -7,54 +7,63 @@ from glob import glob
 import os
 from datetime import datetime
 import sqlite3
-from era5_config import cfg
+from era5_functions import read_config
 
-datadir = '/g/data1a/ub4/era5'
-# /g/data/ub4/era5/netcdf/surface/TP/2018/
-#d = os.path.join(cfg['datadir'], 'netcdf/*/*/uncompressed/*/*.nc')
-d = os.path.join(datadir, 'netcdf/*/*/????/*.nc')
-print('Searching: {} ...'.format(d))
-#exit()
+def db_connect(cfg):
+    """ connect to ERA5 files sqlite db
+    """
+    return sqlite3.connect(cfg['db'], timeout=10, isolation_level=None)
 
-g = glob(d)
-print('Found {} files.'.format(len(g)))
+def query(conn, sql, tup):
+    """ generic query
+    """
+    with conn:
+        c = conn.cursor()
+        c.execute(sql, tup)
+        return [ x[0] for x in c.fetchall() ]
 
-# get a list of already in db
-conn = sqlite3.connect(cfg['db'], timeout=10, isolation_level=None)
-with conn:
-    c = conn.cursor()
+def main():
+    # read configuration and open ERA5 files database
+    cfg = read_config()
+    conn = db_connect(cfg)
+
+    # List all netcdf files in datadir
+    d = os.path.join(cfg['datadir'], '*/*/*/*.nc')
+    print(f'Searching: {d} ...')
+    g = glob(d)
+    print(f'Found {len(g)} files.')
+
+    # get a list of files already in db
     sql = 'select filename from file order by filename asc'
-    c.execute(sql)
-    xl = [ x[0] for x in c.fetchall() ]
+    xl = query(conn, sql, ())
+    print(f'Records already in db: {len(xl)}')
 
-print('Records already in db: {}'.format(len(xl)))
-
-tsfmt = '%FT%T'
-fl = []
-#for f in g[:10]:
-for f in g:
-    if not 'uncompressed' in f:
+    # get stats for all files not in db yet
+    tsfmt = '%FT%T'
+    fl = []
+    for f in g:
         dn, fn = os.path.split(f)
         if not fn in xl:
             s = os.stat(f)
-            l = dn.replace(datadir + '/', '')
+            l = dn.replace(cfg['datadir'] + '/', '')
             ts = datetime.fromtimestamp(s.st_mtime).strftime(tsfmt)
             fl.append( (fn, l, ts, s.st_size) )
 
-print('New files found: {}'.format(len(fl)))
+    print(f'New files found: {len(fl)}')
 
-# insert into db
-if len(fl) > 0:
-    print('Updating db ...')
-    #conn = sqlite3.connect(cfg['db'], timeout=10, isolation_level=None)
-    with conn:
-        c = conn.cursor()
+    # insert into db
+    if len(fl) > 0:
+        print('Updating db ...')
+        with conn:
+            c = conn.cursor()
         #sql = 'insert or replace into file (filename, location, ncidate, size) values (?,?,?,?)'
-        sql = 'insert or ignore into file (filename, location, ncidate, size) values (?,?,?,?)'
+            sql = 'insert or ignore into file (filename, location, ncidate, size) values (?,?,?,?)'
         #print(sql)
-        c.executemany(sql, fl)
-        c.execute('select total_changes()')
-        print('Rows modified:', c.fetchall()[0][0])
+            c.executemany(sql, fl)
+            c.execute('select total_changes()')
+            print('Rows modified:', c.fetchall()[0][0])
 
-print('--- Done ---')
+    print('--- Done ---')
 
+if __name__ == '__main__':
+    main()

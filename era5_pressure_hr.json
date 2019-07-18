@@ -1,4 +1,5 @@
 {
+    "product_type":"reanalysis",
     "area": "20/78/-57/-140",
     "dsid": "reanalysis-era5-pressure-levels",
     "grid": "aus",
@@ -42,6 +43,7 @@
         "1000"
     ],
     "params": [
+        "129.128",
         "130.128",
         "131.128",
         "132.128",

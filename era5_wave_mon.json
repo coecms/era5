@@ -1,0 +1,9 @@
+{
+    "area": "90/-180/-90/179.5",
+    "dsid": "reanalysis-era5-single-levels-monthly-means",
+    "product_type": "monthly_averaged_reanalysis",
+    "grid": "global",
+    "levels": [],
+    "params": [
+    ]
+}
