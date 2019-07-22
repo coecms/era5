@@ -128,12 +128,13 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep, back):
     """Builds request dictionary to pass to retrieve command 
     """
     timelist = ["%.2d:00" % i for i in range(24)]
-    rdict={ 'product_type': dsargs['product_type'],
-            'variable'    : var,
+    rdict={ 'variable'    : var,
             'year'        : str(yr),
             'month'       : str(mn),
             'format'      : oformat,
             'area'        : dsargs['area']} 
+    if 'product_type' in dsargs.keys():
+        rdict['product_type'] = dsargs['product_type']
     if dsargs['levels'] != []:
         rdict['pressure_level']= dsargs['levels']
     if tstep == 'mon':
@@ -181,19 +182,22 @@ def target(stream, var, yr, mn, dsargs, tstep, back):
     """Build output paths and filename, 
        build list of days to process based on year and month
     """
+    # did is era5land for land stream and era5 for anything else
+    did = 'era5'
+    if stream == 'land': did+='land'
     # set output path
     if tstep == 'mon':
         ydir = 'monthly'
-        fname = f"{var}_era5_mon_{dsargs['grid']}_{yr}{mn}.nc"
+        fname = f"{var}_{did}_mon_{dsargs['grid']}_{yr}{mn}.nc"
         daylist = []
         if back:
-            fname = f"{var}_era5_mon_{dsargs['grid']}_197901_201812.nc"
+            fname = f"{var}_{did}_mon_{dsargs['grid']}_197901_201812.nc"
     else:
         ydir = yr
     # define filename based on var, yr, mn and stream attributes
         startmn=mn
         daylist = define_dates(yr,mn) 
-        fname = f"{var}_era5_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.nc"
+        fname = f"{var}_{did}_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.nc"
     stagedir = os.path.join(cfg['staging'],stream, var,ydir)
     destdir = os.path.join(cfg['datadir'],stream,var,ydir)
     # create path if required
