@@ -173,7 +173,7 @@ def common_args(f):
         click.option('--queue', '-q', is_flag=True, default=False,
                      help="Create json file to add request to queue"),
         click.option('--stream', '-s', required=True, type=click.Choice(['surface','wave','pressure', 'land']),
-                     help="ECMWF stream currently operative analysis surface, wave or pressure levels"),
+                     help="ECMWF stream currently operative analysis surface, pressure levels, wave model and ERA5 land"),
         click.option('--year', '-y', required=True,
                      help="year to download"),
         click.option('--month', '-m', multiple=True,
@@ -193,14 +193,14 @@ def common_args(f):
 @era5.command()
 @common_args
 @click.option('--param', '-p', multiple=True,
-             help="Grib code parameter for selected variable, pass as param.table i.e. 132.128. If not passed all parametes for the stream will be updated")
+             help="Grib code parameter for selected variable, pass as param.table i.e. 132.128. If not passed all parameters for the stream will be updated")
 def update(oformat, param, stream, year, month, timestep, back, queue):
     """ 
-    Update ERA5 variables, if regular monthly update 
-    then passing only the stream argument will update
-    all the variables listed in the era5_<stream>.json file.
+    Update ERA5 variables, to be used for regular monthly update 
+    if passing only the stream argument without params it will update
+    all the variables listed in the era5_<stream>_<timestep>.json file.
     \f
-    Grid and other stream settings are in the era5_<stream>.json file.
+    Grid and other stream settings are in the era5_<stream>_<timestep>.json file.
     """
     ####I'm separating this in update and , so eventually update can check if no yr/mn passed or only yr passed which was the last month downloaded
     
@@ -224,8 +224,9 @@ def download(oformat, param, stream, year, month, timestep, back, queue):
     if adding a new variable,
     if month argument is not passed 
     then the entire year will be downloaded. 
+    By default downloads hourly data in netcdf format.
     \f
-    Grid and other stream settings are in the stream.json file.
+    Grid and other stream settings are in the era5_<stream>_<timestep>.json files.
     """
     update = False
     if back and timestep != 'mon':
