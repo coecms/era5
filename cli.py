@@ -172,7 +172,7 @@ def common_args(f):
     constraints = [
         click.option('--queue', '-q', is_flag=True, default=False,
                      help="Create json file to add request to queue"),
-        click.option('--stream', '-s', required=True, type=click.Choice(['surface','wave','pressure']),
+        click.option('--stream', '-s', required=True, type=click.Choice(['surface','wave','pressure', 'land']),
                      help="ECMWF stream currently operative analysis surface, wave or pressure levels"),
         click.option('--year', '-y', required=True,
                      help="year to download"),
@@ -231,7 +231,6 @@ def download(oformat, param, stream, year, month, timestep, back, queue):
     if back and timestep != 'mon':
         print('You can the backwards option only with monthly data')
         sys.exit()
-    print(timestep)
     if queue:
         dump_args(update, oformat, stream, list(param), year, list(month), timestep, back)
     else:    
