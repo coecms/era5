@@ -1,19 +1,23 @@
-# To download ERA5 data from the Copernicus data server
-# Download all the files for a year or selected months
-# Timestep is 1hr
-# Resolution is 0.25X0.25 degree, area is global for surface variable and 
-# and Australian extended region defined as 
-# -57 to 20 Lat and 78 to -140 Lon
-# to change them change the relative fields
-# Use: change year and adjust mntlist if necessary
-#      python era5_download.py -y <year> -m <month> -v <variable> -t  <stream> 
-# depends on cdapi.py that can be downloaded from the Copernicus website
-#   https://cds.climate.copernicus.eu/api-how-to
-# Author: Paola Petrelli for ARC Centre of Excellence for Climate Extremes
-#         Matt Nethery NCI 
-# contact: paolap@utas.edu.au
-# last updated 22/02/2019
 #!/usr/bin/python
+# Copyright 2019 ARC Centre of Excellence for Climate Extremes (CLEx) and NCI
+# Author: Paola Petrelli <paola.petrelli@utas.edu.au> for CLEx 
+#         Matt Nethery <matt.nethery@nci.org.au> for NCI 
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# This file contains functions called by the main cli.py program
+# contact: paolap@utas.edu.au
+# last updated 22/07/2019
 
 import logging
 import json
@@ -128,12 +132,13 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep, back):
     """Builds request dictionary to pass to retrieve command 
     """
     timelist = ["%.2d:00" % i for i in range(24)]
-    rdict={ 'product_type': dsargs['product_type'],
-            'variable'    : var,
+    rdict={ 'variable'    : var,
             'year'        : str(yr),
             'month'       : str(mn),
             'format'      : oformat,
             'area'        : dsargs['area']} 
+    if 'product_type' in dsargs.keys():
+        rdict['product_type'] = dsargs['product_type']
     if dsargs['levels'] != []:
         rdict['pressure_level']= dsargs['levels']
     if tstep == 'mon':
@@ -181,19 +186,22 @@ def target(stream, var, yr, mn, dsargs, tstep, back):
     """Build output paths and filename, 
        build list of days to process based on year and month
     """
+    # did is era5land for land stream and era5 for anything else
+    did = 'era5'
+    if stream == 'land': did+='land'
     # set output path
     if tstep == 'mon':
         ydir = 'monthly'
-        fname = f"{var}_era5_mon_{dsargs['grid']}_{yr}{mn}.nc"
+        fname = f"{var}_{did}_mon_{dsargs['grid']}_{yr}{mn}.nc"
         daylist = []
         if back:
-            fname = f"{var}_era5_mon_{dsargs['grid']}_197901_201812.nc"
+            fname = f"{var}_{did}_mon_{dsargs['grid']}_197901_201812.nc"
     else:
         ydir = yr
     # define filename based on var, yr, mn and stream attributes
         startmn=mn
         daylist = define_dates(yr,mn) 
-        fname = f"{var}_era5_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.nc"
+        fname = f"{var}_{did}_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.nc"
     stagedir = os.path.join(cfg['staging'],stream, var,ydir)
     destdir = os.path.join(cfg['datadir'],stream,var,ydir)
     # create path if required
