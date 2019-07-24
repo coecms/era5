@@ -14,7 +14,6 @@
  "143.128": ["CP", "convective_precipitation"],
  "155.128": ["D", "divergence"],
  "182.128": ["E", "evaporation"],
- "243.128": ["FAL", "forecast_albedo"],
  "245.128": ["FLSR", "forecast_logarithm_of_surface_roughness_for_heat"],
  "244.128": ["FSR", "forecast_surface_roughness"],
  "129.128": ["Z", "geopotential"],

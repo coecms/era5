@@ -1,16 +1,32 @@
+#!/usr/bin/env python
+# Copyright 2019 ARC Centre of Excellence for Climate Extremes (CLEx) and NCI
+# Author: Paola Petrelli <paola.petrelli@utas.edu.au> for CLEx 
+#         Matt Nethery <matt.nethery@nci.org.au> for NCI 
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 # To download ERA5 data from the Copernicus data server
 # Download all the files for a year or selected months
-# Timestep is 1hr
-# Resolution is 0.25X0.25 degree, area is global for surface variable and 
-# and Australian extended region defined as 
+# Timestep is 1hr or monthly averages
+# Resolution is 0.1X0.1 degrees for ERA5 Land, 0.25X0.25 degrees for pressure and surface levels
+#  and 0.5X0.5 degrees for wave model surface level
+# Area is global for surface, wave model and land variables variable while pressure levels are downloaded on
+# an Australian extended region defined as 
 # -57 to 20 Lat and 78 to -140 Lon
-# to change them change the relative fields
 # Use: change year and adjust mntlist if necessary
-#      python era5_download.py -y <year> -m <month> -v <variable> -t  <stream> 
+#     python era5_download.py -y <year> -m <month> -v <variable> -t  <stream> 
 # depends on cdapi.py that can be downloaded from the Copernicus website
 #   https://cds.climate.copernicus.eu/api-how-to
-# Author: Paola Petrelli for ARC Centre of Excellence for Climate Extremes
-#         Matt Nethery NCI 
 # contact: paolap@utas.edu.au
 # last updated 28/02/2019
 #!/usr/bin/python
