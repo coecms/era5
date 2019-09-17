@@ -1,15 +1,15 @@
 {
     "nthreads": 8,
-    "datadir": "/g/data/ub4/era5/netcdf",
-    "staging": "/g/data/ub4/era5/staging",
+    "datadir": "...../ub4/era5/netcdf",
+    "staging": "...../ub4/era5/staging",
     "logdir": "../log",
     "getcmd": "curl -o",
     "resumewget": "wget -c -O",
     "resumecmd": "curl -C - -o",
     "retry": 5,
-    "qccmd": "gdalinfo",
+    "qccmd": "ncdump -h",
     "nccmd": "nccopy -k 4 -d5 -s",
-    "db": "../db/era5.sqlite",
+    "db": "..../era5.sqlite",
     "slowips": [ "198" ],
     "altips": [ "105", "110", "153", "201", "210", "235", "236" ]
 }

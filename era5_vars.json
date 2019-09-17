@@ -155,5 +155,10 @@
 "141.128": ["sd","snow_depth_water_equivalent"],
 "44.128": ["es","snow_evaporation"],
 "45.128": ["smlt","snowmelt"],
+"48.235": ["mror","mean_runoff_rate"],
+"33.235": ["MSSHF","mean_surface_sensible_heat_flux"],
+"34.235": ["MSLHF","mean_surface_latent_heat_flux"],
+"37.235": ["MSNSWRF","mean_surface_net_short_wave_radiation_flux"],
+"38.235": ["MSNLWRF","mean_surface_net_long_wave_radiation_flux"],
  "132.228": ["v10n", "10m_v_component_of_neutral_wind"],
  "131.228": ["u10n", "10m_u_component_of_neutral_wind"]}
