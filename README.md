@@ -1,10 +1,13 @@
+#ERA5
+ https://zenodo.org/badge/DOI/10.5281/zenodo.3549078.svg
+
 The era5 python code is an interface to the CDS api to donwload ERA5 data from the CDS data server.
 It uses a modified version of the CDS api which stops after a request has been submitted and executed. The target download url is saved and downloads are run in parallell by the code using Pool multiprocessing module.
 As well as managing the downloads the code get all the necessary information on available variables from local json configuration files.
 Before submitting a request the code will check that the file is not already available locally by quering a sqlite database. After downloading new files is important to update the database to avoid to download twice the same file. Files are first downloaded in a staging area, a quick qc to see if the file is a valid netcdf file is run and finally the file is converted to netcdf4 format with internal compression.
 The code default behaviour is to donwload netcdf files, but it's also possible to download grib, howwver we haven't tested the full workflow for this option.
 
-Getting started
+##Getting started
 
 To run a download::
 
@@ -90,12 +93,12 @@ era5_surface_mon.json -- surface level stream arguments to build request and lis
 era5_land_hr.json -- Land model surface level stream arguments to build request and list of params to download at hourly temporal resolution
 era5_vars.json  -- Json file with list of grib codes that can be downloaded from CDS and respective variable and cds names
 
-#Other files, not to be included in git
+###Other files, not to be included in git
 era5.sqlite -- sqlite database
 
 setup.py.template  -- template for setup.py 
 
-#Modified cdsapi code
+###Modified cdsapi code
 cdsapi:
 __init__.py
 __pycache__
