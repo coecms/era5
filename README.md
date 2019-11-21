@@ -72,7 +72,7 @@ To execute the request the tool is used with the 'scan' command option::
                        module load conda/analysis3
 + era5_update_db.py  -- crawls /g/data/ub4/era5/netcdf and adds new netcdf files to the sqlite database
 
-To configure the tool
+### To configure the tool
 
 + config.json  -- to set configuration:
 ..+                   staging, data, logs directories,
