@@ -145,7 +145,10 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep, back):
         rdict['time'] = '00:00'
         if back:
             rdict['month'] = ["%.2d" % i for i in range(1,13)]
-            rdict['year'] = ["%.2d" % i for i in range(1979,2019)]
+            if dsargs['dsid'] == 'reanalysis-era5-land-monthly-means':
+                rdict['year'] = ["%.2d" % i for i in range(2001,2019)]
+            else:
+                rdict['year'] = ["%.2d" % i for i in range(1979,2019)]
     else:
         rdict['day'] = daylist
         rdict['time'] = timelist
@@ -195,7 +198,10 @@ def target(stream, var, yr, mn, dsargs, tstep, back):
         fname = f"{var}_{did}_mon_{dsargs['grid']}_{yr}{mn}.nc"
         daylist = []
         if back:
-            fname = f"{var}_{did}_mon_{dsargs['grid']}_197901_201812.nc"
+            if stream == 'land':
+                fname = f"{var}_{did}_mon_{dsargs['grid']}_2001_201812.nc"
+            else:
+                fname = f"{var}_{did}_mon_{dsargs['grid']}_197901_201812.nc"
     else:
         ydir = yr
     # define filename based on var, yr, mn and stream attributes

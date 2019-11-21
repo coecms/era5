@@ -153,6 +153,8 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
                 # progress index to alternate between ips
                 i+=1
                 era5log.info(f'Added request for {fname}')
+            if tstep == 'mon':
+                break
     
     era5log.debug(f'{rqlist}')
 

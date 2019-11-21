@@ -160,5 +160,6 @@
 "34.235": ["MSLHF","mean_surface_latent_heat_flux"],
 "37.235": ["MSNSWRF","mean_surface_net_short_wave_radiation_flux"],
 "38.235": ["MSNLWRF","mean_surface_net_long_wave_radiation_flux"],
+"1.228": ["cin", "convective_inhibition"],
  "132.228": ["v10n", "10m_v_component_of_neutral_wind"],
  "131.228": ["u10n", "10m_u_component_of_neutral_wind"]}

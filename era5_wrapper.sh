@@ -11,7 +11,7 @@ TSTAMP=$(date -u +%Y%m%dT%H%M%S)
 SCRIPTDIR=$(dirname $0)
 cd $SCRIPTDIR
 ERRORLOG="../log/era5_wrapper_error.log"
-REQUESTDIR="../requests"
+REQUESTDIR="/mnt/ub4/Work/Scripts/Requests"
 
 echo "--- Starting $0 ($TSTAMP) ---"
 
@@ -27,10 +27,10 @@ if [ "$LOCKED" == "YES" ] ; then
 fi
 
 # set the environment, load required modules
-echo "Loading modules ..."
-module load python3/3.6.2 netcdf
-export LANG=en_AU.utf8
-export LC_ALL=$LANG
+#echo "Loading modules ..."
+#module load python3/3.6.2 netcdf
+#export LANG=en_AU.utf8
+#export LC_ALL=$LANG
 
 # refresh requests
 # couple of options: git pull; or rsync ; or nothing
@@ -42,6 +42,8 @@ echo "Starting download ..."
 for J in $REQUESTS ; do
   echo "  $J"
   python3 cli.py scan -f $J 1>/dev/null 2>>$ERRORLOG
+  echo " Finished , moving request $J"
+  mv $J ${REQUESTDIR}/Completed/$(basename "$J")
   #python3 cli.py scan -f $J
 done
 
