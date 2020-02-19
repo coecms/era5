@@ -3,11 +3,11 @@ ___
 
 # ERA5
 
-The era5 python code is an interface to the CDS api to donwload ERA5 data from the CDS data server.
-It uses a modified version of the CDS api which stops after a request has been submitted and executed. The target download url is saved and downloads are run in parallell by the code using Pool multiprocessing module.
-As well as managing the downloads the code get all the necessary information on available variables from local json configuration files.
-Before submitting a request the code will check that the file is not already available locally by quering a sqlite database. After downloading new files is important to update the database to avoid to download twice the same file. Files are first downloaded in a staging area, a quick qc to see if the file is a valid netcdf file is run and finally the file is converted to netcdf4 format with internal compression.
-The code default behaviour is to donwload netcdf files, but it's also possible to download grib, howwver we haven't tested the full workflow for this option.
+The era5 python code is an interface to the CDS api to download ERA5 data from the CDS data server.
+It uses a modified version of the CDS api which stops after a request has been submitted and executed. The target download url is saved and downloads are run in parallel by the code using the Pool multiprocessing module.
+As well as managing the downloads the code gets all the necessary information on available variables from local json configuration files.
+Before submitting a request the code will check that the file is not already available locally by quering a sqlite database. After downloading new files it is important to update the database to avoid downloading twice the same file. Files are first downloaded in a staging area, a quick qc to see if the file is a valid netcdf file is run and finally the file is converted to netcdf4 format with internal compression.
+The code default behaviour is to download netcdf files, but it's also possible to download grib, however we haven't tested the full workflow for this option.
 
 ## Getting started
 
@@ -17,7 +17,7 @@ To run a download::
 
   Download ERA5 variables, to be preferred  if adding a new variable, if
   month argument is not passed  then the entire year will be downloaded.  By
-  default downloads hourly data in netcdf format.
+  default it downloads hourly data in netcdf format.
 
 Options:
 +  -q, --queue                     Create json file to add request to queue
@@ -40,7 +40,7 @@ To update files when a new month is released::
 
     python cli.py update -s surface -y 2019 -m 05 
 
-  Update ERA5 variables, to be used for regular monthly update. Only the stream argument without params it will update all the variables listed in the era5_<stream>_<timestep>.json file.
+  Update ERA5 variables, to be used for regular monthly updates. Only the stream argument without params will update all the variables listed in the era5_<stream>_<timestep>.json file.
   Options are the same as for download.
 
 The 'download' and 'update' commands will actually download the data unless you use the 'queue' flag.
