@@ -17,7 +17,7 @@
 #
 # Crawl era5 netcdf directories and update ERA db with new files found
 # contact: paolap@utas.edu.au
-# last updated 22/07/2019
+# last updated 28/04/2020
 
 from glob import glob
 import os
