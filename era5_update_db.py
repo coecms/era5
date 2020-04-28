@@ -17,9 +17,8 @@
 #
 # Crawl era5 netcdf directories and update ERA db with new files found
 # contact: paolap@utas.edu.au
-# last updated 22/07/2019
+# last updated 28/04/2020
 
-from __future__ import print_function   # Py < 3
 from glob import glob
 import os
 from datetime import datetime
@@ -30,6 +29,17 @@ def db_connect(cfg):
     """ connect to ERA5 files sqlite db
     """
     return sqlite3.connect(cfg['db'], timeout=10, isolation_level=None)
+
+def create_table(conn):
+    """ create file table if database doesn't exists or empty
+        :conn  connection object
+    """
+    file_sql = 'CREATE TABLE IF NOT EXISTS file( filename TEXT PRIMARY KEY, location TEXT, ncidate TEXT, size INT);' 
+    try:
+        c = conn.cursor()
+        c.execute(file_sql)
+    except Error as e:
+        print(e)
 
 def query(conn, sql, tup):
     """ generic query
@@ -43,6 +53,7 @@ def main():
     # read configuration and open ERA5 files database
     cfg = read_config()
     conn = db_connect(cfg)
+    create_table(conn)
 
     # List all netcdf files in datadir
     d = os.path.join(cfg['datadir'], '*/*/*/*.nc')
