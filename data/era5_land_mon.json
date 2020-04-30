@@ -1,0 +1,15 @@
+{
+    "product_type":"monthly_averaged_reanalysis",
+    "area": "90/-180/-90/179.9",
+    "dsid": "reanalysis-era5-land-monthly-means",
+    "grid": "global",
+    "levels": [],
+    "params": [
+        "146.128",
+        "147.128",
+        "176.128",
+        "177.128",
+        "205.128",
+        "228.128"
+    ]
+}

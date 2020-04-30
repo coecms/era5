@@ -115,7 +115,7 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
     dsargs = define_args(stream, tstep)
     era5log.debug(f'Stream attributes: {dsargs}')
     # get variables details from json file
-    vardict = read_vars()
+    vardict = read_vars(stream)
     # define params to download
     if update and params == []:
         params = dsargs['params']
@@ -190,8 +190,10 @@ def common_args(f):
     constraints = [
         click.option('--queue', '-q', is_flag=True, default=False,
                      help="Create json file to add request to queue"),
-        click.option('--stream', '-s', required=True, type=click.Choice(['surface','wave','pressure', 'land']),
-                     help="ECMWF stream currently operative analysis surface, pressure levels, wave model and ERA5 land"),
+        click.option('--stream', '-s', required=True,
+                     type=click.Choice(['surface','wave','pressure', 'land', 'fire', 'agro']),
+                     help="ECMWF stream currently operative analysis surface, pressure levels, "+\
+                     "wave model, ERA5 land, fire indices and agrometeorological indicators"),
         click.option('--year', '-y', multiple=True, required=True,
                      help="year to download"),
         click.option('--month', '-m', multiple=True,

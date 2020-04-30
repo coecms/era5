@@ -1,0 +1,15 @@
+{"bui": ["bui", "build_up_index"],
+ "danger_risk": ["danger_risk", "danger_risk"],
+ "dc": ["dc", "drought_code"],
+ "dmc": ["dmc", "duff_moisture_code"],
+ "dsr": ["dsr", "fire_daily_severity_rating"],
+ "ffmc": ["ffmc", "fine_fuel_moisture_code"],
+ "fwi": ["fwi", "fire_weather_index"],
+ "isi": ["isi", "initial_fire_spread_index"],
+ "fdi": ["fdi", "fire_danger_index"],
+ "kbdi": ["kbdi", "keetch_byram_drought_index"],
+ "bi": ["bi", "burning_index"],
+ "erc": ["erc", "energy_release_component"],
+ "ic": ["ic", "ignition_component"],
+ "sc": ["sc", "spread_component"]
+}

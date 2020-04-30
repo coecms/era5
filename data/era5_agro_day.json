@@ -1,0 +1,13 @@
+{
+    "area": "90/-180/-90/179.9",
+    "dsid": "sis-agrometeorological-indicators",
+    "grid": "global",
+    "format": "tgz",
+    "statistics": [
+        "24_hour_maximum", "24_hour_mean", "24_hour_minimum",
+        "day_time_maximum", "day_time_mean", "night_time_mean",
+        "night_time_minimum"],
+    "levels": [],
+    "params": ["cloud_cover"
+    ]
+}

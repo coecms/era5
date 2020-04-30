@@ -114,10 +114,14 @@ def define_args(stream, tstep):
     return  dsargs
 
 
-def read_vars():
+def read_vars(stream):
     """Read parameters info from era5_vars.json file
     """
-    with open('era5_vars.json','r') as fj:
+    if stream == 'fire':
+        var_file = 'data/era5_indices.json'
+    else:
+        var_file = 'data/era5_vars.json'
+    with open(var_file,'r') as fj:
          vardict = json.load(fj)
     return vardict 
 
