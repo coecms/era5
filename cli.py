@@ -192,7 +192,7 @@ def common_args(f):
                      help="Create json file to add request to queue"),
         click.option('--stream', '-s', required=True, type=click.Choice(['surface','wave','pressure', 'land']),
                      help="ECMWF stream currently operative analysis surface, pressure levels, wave model and ERA5 land"),
-        click.option('--year', '-y', required=True,
+        click.option('--year', '-y', multiple=True, required=True,
                      help="year to download"),
         click.option('--month', '-m', multiple=True,
                      help="month/s to download, if not specified all months for year will be downloaded "),
