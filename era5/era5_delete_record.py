@@ -26,7 +26,7 @@ import os
 from glob import glob
 from datetime import datetime
 
-from era5_functions import read_config
+from .era5_functions import read_config
 
 
 def parse():

@@ -23,7 +23,7 @@ from glob import glob
 import os
 from datetime import datetime
 import sqlite3
-from era5_functions import read_config
+from .era5_functions import read_config
 
 def db_connect(cfg):
     """ connect to ERA5 files sqlite db

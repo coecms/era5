@@ -35,9 +35,18 @@ import click
 import os
 import sys
 from multiprocessing.dummy import Pool as ThreadPool
-from era5_update_db import db_connect, query
-from era5_functions import *
+from .era5_update_db import db_connect, query
+from .era5_functions import *
 
+def era5_catch():
+    debug_logger = logging.getLogger('era5_debug')
+    debug_logger.setLevel(logging.CRITICAL)
+    try:
+        era5()
+    except Exception as e:
+        click.echo('ERROR: %s'%e)
+        debug_logger.exception(e)
+        sys.exit(1)
 
 def do_request(r):
     """
@@ -103,6 +112,8 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
     # list of faster ips to alternate
     ips = cfg['altips']
     i = 0 
+    # list of years when ERA5.1 should be donwloaded instead of ERA5
+    era51 = [str(y) for y in range(2000,2007)])
     # assign year and list of months
     if type(yr) is list:
         yrs = yr
@@ -124,6 +135,9 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
     # variables in one request, or at least loop through variables in the innermost loop.
     
     for y in yrs:
+        # change product_type if pressure and year between 2000 and 2006 included
+        if y in era51 and stream == 'pressure':
+            dsargs['product_type'] = 'reanalysis-era5.1-complete'
         # build Copernicus requests for each month and submit it using cdsapi modified module
         for mn in mntlist:
             # for each output file build request and append to list
@@ -253,9 +267,9 @@ def download(oformat, param, stream, year, month, timestep, back, queue):
         print('You can the backwards option only with monthly data')
         sys.exit()
     if queue:
-        dump_args(update, oformat, stream, list(param), year, list(month), timestep, back)
+        dump_args(update, oformat, stream, list(param), list(year), list(month), timestep, back)
     else:    
-        api_request(update, oformat, stream, list(param), year, list(month), timestep, back)
+        api_request(update, oformat, stream, list(param), list(year), list(month), timestep, back)
 
 
 @era5.command()

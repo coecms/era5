@@ -21,11 +21,12 @@
 
 import logging
 import json
-import cdsapi
+import era5.cdsapi
+import os
+import pkg_resources
+import subprocess as sp
 from calendar import monthrange
 from datetime import datetime
-import os
-import subprocess as sp
 
 
 def config_log(debug):
@@ -76,7 +77,8 @@ def read_config():
     Read config from config.json file
     """
     try:
-        with open('config.json','r') as fj:
+        cfg_file = pkg_resources.resource_filename(__name__, 'data/config.json')
+        with open(cfg_file,'r') as fj:
             cfg = json.load(fj)
     except FileNotFoundError:
         print(f"Can't find file config.json in {os.getcwd()}")
@@ -109,7 +111,8 @@ def define_args(stream, tstep):
     ''' Return parameters and levels lists and step, time depending on stream type'''
     # this import the stream_dict dictionary <stream> : ['time','step','params','levels']
     # I'm getting the information which is common to all pressure/surface/wave variables form here, plus a list of the variables we download for each stream
-    with open(f'era5_{stream}_{tstep}.json', 'r') as fj:
+    stream_file = pkg_resources.resource_filename(__name__, f'data/era5_{stream}_{tstep}.json')
+    with open(stream_file, 'r') as fj:
         dsargs = json.load(fj)
     return  dsargs
 
@@ -118,9 +121,9 @@ def read_vars(stream):
     """Read parameters info from era5_vars.json file
     """
     if stream == 'fire':
-        var_file = 'data/era5_indices.json'
+        var_file = pkg_resources.resource_filename(__name__, 'data/era5_indices.json')
     else:
-        var_file = 'data/era5_vars.json'
+        var_file = pkg_resources.resource_filename(__name__, 'data/era5_vars.json')
     with open(var_file,'r') as fj:
          vardict = json.load(fj)
     return vardict 
