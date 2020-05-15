@@ -21,7 +21,6 @@
 
 import logging
 import json
-import era5.cdsapi
 import os
 import pkg_resources
 import subprocess as sp
@@ -144,8 +143,14 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep, back):
             'month'       : str(mn),
             'format'      : oformat,
             'area'        : dsargs['area']} 
+    #if stream == 'fire':
+    #    rdict['variable'] = dsargs['params'],
     if 'product_type' in dsargs.keys():
         rdict['product_type'] = dsargs['product_type']
+    if 'version' in dsargs.keys():
+        rdict['version'] = dsargs['version']
+    if 'dataset' in dsargs.keys():
+        rdict['dataset'] = dsargs['dataset']
     if dsargs['levels'] != []:
         rdict['pressure_level']= dsargs['levels']
     if tstep == 'mon':
@@ -159,6 +164,31 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep, back):
     else:
         rdict['day'] = daylist
         rdict['time'] = timelist
+    return rdict 
+
+def build_mars(dsargs, yr, mn, param, oformat, tstep, back):
+    """ Create request for MARS """
+    datestr = f'{yr}-{mn}-01/to/{yr}-{mn}-{monthrange(int(yr),int(mn))[1]}'
+    rdict={ 'param'    : param,
+            'date': datestr,
+            'levtype': 'pl',
+            'stream': 'oper',
+            'type': 'an',
+            'grid' : '0.25/0.25',
+            'format'      : oformat,
+            'area'        : dsargs['area']} 
+    if dsargs['levels'] != []:
+        rdict['levelist']= dsargs['levels']
+    #if tstep == 'mon':
+    #    rdict['time'] = '00:00'
+    #    if back:
+    #        rdict['month'] = ["%.2d" % i for i in range(1,13)]
+    #        if dsargs['dsid'] == 'reanalysis-era5-land-monthly-means':
+    #            rdict['year'] = ["%.2d" % i for i in range(1981,2019)]
+    #        elif dsargs['dsid'] == 'reanalysis-era5-single-levels-monthly-means':
+    #            rdict['year'] = ["%.2d" % i for i in range(1979,2020)]
+    #else:
+    rdict['time'] = '00:00:00/01:00:00/02:00:00/03:00:00/04:00:00/05:00:00/06:00:00/07:00:00/08:00:00/09:00:00/10:00:00/11:00:00/12:00:00/13:00:00/14:00:00/15:00:00/16:00:00/17:00:00/18:00:00/19:00:00/20:00:00/21:00:00/22:00:00/23:00:00' 
     return rdict 
 
 
@@ -192,32 +222,37 @@ def file_down(url, tempfn, size, era5log):
     return False
     
 
-def target(stream, var, yr, mn, dsargs, tstep, back):
+def target(stream, var, yr, mn, dsargs, tstep, back, oformat):
     """Build output paths and filename, 
        build list of days to process based on year and month
     """
+    # temporary fix to go from netcdf to nc
+    if oformat == 'netcdf': oformat='nc'
     # did is era5land for land stream and era5 for anything else
     did = 'era5'
-    if stream == 'land':
-        did+='land'
+    if stream in ['land','fire','agro']:
+        did+=stream
     # set output path
     if tstep == 'mon':
         ydir = 'monthly'
-        fname = f"{var}_{did}_mon_{dsargs['grid']}_{yr}{mn}.nc"
+        fname = f"{var}_{did}_mon_{dsargs['grid']}_{yr}{mn}.{oformat}"
         daylist = []
         if back:
             if stream == 'land':
-                fname = f"{var}_{did}_mon_{dsargs['grid']}_198101_201812.nc"
+                fname = f"{var}_{did}_mon_{dsargs['grid']}_198101_201812.{oformat}"
             if stream == 'pressure':
-                fname = f"{var}_{did}_mon_{dsargs['grid']}_{yr}01_{yr}12.nc"
+                fname = f"{var}_{did}_mon_{dsargs['grid']}_{yr}01_{yr}12.{oformat}"
             else:
-                fname = f"{var}_{did}_mon_{dsargs['grid']}_197901_201912.nc"
+                fname = f"{var}_{did}_mon_{dsargs['grid']}_197901_201912.{oformat}"
     else:
         ydir = yr
     # define filename based on var, yr, mn and stream attributes
         startmn=mn
         daylist = define_dates(yr,mn) 
-        fname = f"{var}_{did}_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.nc"
+        fname = f"{var}_{did}_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.{oformat}"
+    if stream in ['fire','agro']:
+        fname = f"{did}_day_{dsargs['grid']}_{yr}{mn}.{oformat}"
+        var = "indexes"
     stagedir = os.path.join(cfg['staging'],stream, var,ydir)
     destdir = os.path.join(cfg['datadir'],stream,var,ydir)
     # create path if required

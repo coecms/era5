@@ -35,8 +35,9 @@ import click
 import os
 import sys
 from multiprocessing.dummy import Pool as ThreadPool
-from .era5_update_db import db_connect, query
-from .era5_functions import *
+from era5.era5_update_db import db_connect, query
+from era5.era5_functions import *
+import era5.cdsapi as cdsapi
 
 def era5_catch():
     debug_logger = logging.getLogger('era5_debug')
@@ -113,12 +114,12 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
     ips = cfg['altips']
     i = 0 
     # list of years when ERA5.1 should be donwloaded instead of ERA5
-    era51 = [str(y) for y in range(2000,2007)])
+    era51 = [str(y) for y in range(2000,2007)]
     # assign year and list of months
-    if type(yr) is list:
-        yrs = yr
-    else:
-        yrs = [yr]
+    #if type(yr) is list:
+    #    yrs = yr
+    #else:
+    #    yrs = [yr(0)]
 
     if mntlist == []:  
         mntlist = ["%.2d" % i for i in range(1,13)]
@@ -134,10 +135,13 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
     # according to ECMWF, best to loop through years and months and do either multiple
     # variables in one request, or at least loop through variables in the innermost loop.
     
-    for y in yrs:
-        # change product_type if pressure and year between 2000 and 2006 included
+    for y in yr:
+        # change dsid if pressure and year between 2000 and 2006 included
+        mars = False
         if y in era51 and stream == 'pressure':
-            dsargs['product_type'] = 'reanalysis-era5.1-complete'
+            mars = True
+            dsargs = define_args(stream+"51", tstep)
+            dsargs['dsid'] = 'reanalysis-era5.1-complete'
         # build Copernicus requests for each month and submit it using cdsapi modified module
         for mn in mntlist:
             # for each output file build request and append to list
@@ -156,12 +160,17 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
                 nclist += query(conn, sql, tup)
                 era5log.debug(nclist)
 
-                stagedir, destdir, fname, daylist = target(stream, var, y, mn, dsargs, tstep, back)
+                stagedir, destdir, fname, daylist = target(stream, var,
+                                    y, mn, dsargs, tstep, back, oformat)
                 # if file already exists in datadir then skip
                 if file_exists(fname, nclist):
                     era5log.info(f'Skipping {fname} already exists')
                     continue
-                rdict = build_dict(dsargs, y, mn, cdsname, daylist, oformat, tstep, back)
+                if mars:
+                    rdict = build_mars(dsargs, y, mn, varp, oformat, tstep, back)
+                    destdir = destdir.replace('/era5/','/era5/era5-1/')
+                else:
+                    rdict = build_dict(dsargs, y, mn, cdsname, daylist, oformat, tstep, back)
                 rqlist.append((dsargs['dsid'], rdict, os.path.join(stagedir,fname),
                            os.path.join(destdir, fname), ips[i % len(ips)])) 
                 # progress index to alternate between ips
@@ -212,12 +221,12 @@ def common_args(f):
                      help="year to download"),
         click.option('--month', '-m', multiple=True,
                      help="month/s to download, if not specified all months for year will be downloaded "),
-        click.option('--timestep', '-t', type=click.Choice(['mon','hr']), default='hr',
+        click.option('--timestep', '-t', type=click.Choice(['mon','hr','day']), default='hr',
                      help="timestep hr or mon, if not specified hr"),
         click.option('--back', '-b', is_flag=True, default=False,
                      help="Request backwards all years and months as one file, works only for monthly data"),
-        click.option('--format', 'oformat', type=click.Choice(['grib','netcdf']), default='netcdf',
-                     help="Format output: grib or netcdf")
+        click.option('--format', 'oformat', type=click.Choice(['grib','netcdf','zip','tgz']), default='netcdf',
+                     help="Format output: grib, nc (for netcdf), tgz (compressed tar file) or zip")
     ]
     for c in reversed(constraints):
         f = c(f)
