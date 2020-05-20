@@ -1,5 +1,5 @@
 {
-    "area": "90/-180/-90/179.9",
+    "area": "90/-180/-90/179.75",
     "dsid": "cems-fire-historical",
     "version": "3.1",
     "format": "tgz",
@@ -9,9 +9,7 @@
     "grid": "global",
     "levels": [],
     "params": [
-        "build_up_index", "burning_index", "danger_risk",
-        "drought_code", "duff_moisture_code", "energy_release_component",
-        "fine_fuel_moisture_code", "fire_daily_severity_rating", "fire_danger_index",
-        "fire_weather_index", "ignition_component", "initial_fire_spread_index",
-        "keetch_byram_drought_index", "spread_component"]
+	    "bui", "danger_risk", "dc", "dmc",
+            "dsr", "ffmc", "fwi", "isi", "fdi",
+	    "kbdi", "bi", "erc", "ic", "sc"]
 }

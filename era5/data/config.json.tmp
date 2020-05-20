@@ -9,6 +9,8 @@
     "retry": 5,
     "qccmd": "ncdump -h",
     "nccmd": "nccopy -k 4 -d5 -s",
+    "untar": "tar -xvf",
+    "concat": "cdo --history -L -s -f nc4c -z zip_5 cat -setreftime,1900-01-01,00:00:00",
     "db": "..../era5.sqlite",
     "slowips": [ "198" ],
     "altips": [ "105", "110", "153", "201", "210", "235", "236" ]

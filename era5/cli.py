@@ -34,6 +34,7 @@
 import click
 import os
 import sys
+from itertools import product as iproduct
 from multiprocessing.dummy import Pool as ThreadPool
 from era5.era5_update_db import db_connect, query
 from era5.era5_functions import *
@@ -88,11 +89,22 @@ def do_request(r):
             if f'.{ip}/' in res.location:
                 url = res.location.replace(f'.{ip}/', f'.{r[4]}/')
         if file_down(url, tempfn, size, era5log):            # successful
-            # do some compression on the file - assuming 1. it's netcdf, 2. that nccopy will fail if file is corrupt
-            era5log.info(f'Compressing {tempfn} ...')
-            cmd = f"{cfg['nccmd']} {tempfn} {fn}"
+            # if netcdf compress file, assuming it'll fail if file is corrupted
+            # if tgz  untar, if zip unzip
+            # if grib skip
+            if tempfn[-3:] == '.nc':
+                era5log.info(f'Compressing {tempfn} ...')
+                cmd = f"{cfg['nccmd']} {tempfn} {fn}"
+            elif tempfn[-4:] == '.tgz':
+                era5log.info(f'Untarring and concatenating {tempfn} ...')
+                base = os.path.dirname(tempfn) 
+                cmd =  f"{cfg['untar']} {tempfn} -C {base}; {cfg['concat']} {base}/*.nc {fn[:-4]}.nc"
+            else:
+                cmd = "echo 'nothing to do'"
+            era5log.debug(f"{cmd}")
             p = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
             out,err = p.communicate()
+            era5log.debug(f"Popen out/err: {out}, {err}")
             if not p.returncode:       # check was successful
                 era5log.info(f'ERA5 download success: {fn}')
             else:
@@ -100,8 +112,7 @@ def do_request(r):
     return
 
 
-
-def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
+def api_request(oformat, stream, params, yr, mntlist, tstep, back):
     """ Build a list of CDSapi requests based on arguments
         Call do_request to submit them and start parallel download
         If download successful, compress file and move to era5/netcdf
@@ -115,12 +126,6 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
     i = 0 
     # list of years when ERA5.1 should be donwloaded instead of ERA5
     era51 = [str(y) for y in range(2000,2007)]
-    # assign year and list of months
-    #if type(yr) is list:
-    #    yrs = yr
-    #else:
-    #    yrs = [yr(0)]
-
     if mntlist == []:  
         mntlist = ["%.2d" % i for i in range(1,13)]
     # retrieve stream arguments
@@ -129,24 +134,29 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
     # get variables details from json file
     vardict = read_vars(stream)
     # define params to download
-    if update and params == []:
+    if params == []:
         params = dsargs['params']
+    era5log.debug(f'Params: {params}')
     
     # according to ECMWF, best to loop through years and months and do either multiple
     # variables in one request, or at least loop through variables in the innermost loop.
     
     for y in yr:
+        era5log.debug(f'Year: {y}')
         # change dsid if pressure and year between 2000 and 2006 included
         mars = False
         if y in era51 and stream == 'pressure':
+            era5log.debug(f'Submitting using mars for ERA5.1')
             mars = True
             dsargs = define_args(stream+"51", tstep)
             dsargs['dsid'] = 'reanalysis-era5.1-complete'
         # build Copernicus requests for each month and submit it using cdsapi modified module
         for mn in mntlist:
+            era5log.debug(f'Month: {mn}')
             # for each output file build request and append to list
             # loop through params and months requested
             for varp in params:
+                era5log.debug(f'Param: {varp}')
                 queue, var, cdsname =  define_var(vardict, varp, era5log)
                 # if grib code exists but cds name is not defined skip var and print warning
                 if not queue:
@@ -177,10 +187,10 @@ def api_request(update, oformat, stream, params, yr, mntlist, tstep, back):
                 i+=1
                 era5log.info(f'Added request for {fname}')
             if back:
+                era5log.debug(f'Breaking cycle back is True')
                 break
     
     era5log.debug(f'{rqlist}')
-
     # parallel downloads
     if len(rqlist) > 0:
         # set num of threads = number of params, or use default from config
@@ -206,6 +216,7 @@ def era5(debug):
     server using the cdsapi module.
     """
     global era5log 
+    print(f'debug: {debug}')
     era5log = config_log(debug)
 
 
@@ -217,6 +228,8 @@ def common_args(f):
                      type=click.Choice(['surface','wave','pressure', 'land', 'fire', 'agro']),
                      help="ECMWF stream currently operative analysis surface, pressure levels, "+\
                      "wave model, ERA5 land, fire indices and agrometeorological indicators"),
+        click.option('--param', '-p', multiple=True,
+             help="Grib code parameter for selected variable, pass as param.table i.e. 132.128. If not passed all parameters for the stream will be updated"),
         click.option('--year', '-y', multiple=True, required=True,
                      help="year to download"),
         click.option('--month', '-m', multiple=True,
@@ -224,7 +237,7 @@ def common_args(f):
         click.option('--timestep', '-t', type=click.Choice(['mon','hr','day']), default='hr',
                      help="timestep hr or mon, if not specified hr"),
         click.option('--back', '-b', is_flag=True, default=False,
-                     help="Request backwards all years and months as one file, works only for monthly data"),
+                     help="Request backwards all years and months as one file, works only for monthly or daily data"),
         click.option('--format', 'oformat', type=click.Choice(['grib','netcdf','zip','tgz']), default='netcdf',
                      help="Format output: grib, nc (for netcdf), tgz (compressed tar file) or zip")
     ]
@@ -232,35 +245,20 @@ def common_args(f):
         f = c(f)
     return f
 
+def db_args(f):
+    '''Arguments to use with db sub-command '''
+    constraints = [
+        click.option('-m','--mode', type=click.Choice(['list','delete','update']), default='update',
+        help="db subcommand running mode: `update` (default) updates the db, `delete` deletes a record from db, `list` list all variables in db for the stream")
+    ]
+    for c in reversed(constraints):
+        f = c(f)
+    return f
 
-@era5.command()
-@common_args
-@click.option('--param', '-p', multiple=True,
-             help="Grib code parameter for selected variable, pass as param.table i.e. 132.128. If not passed all parameters for the stream will be updated")
-def update(oformat, param, stream, year, month, timestep, back, queue):
-    """ 
-    Update ERA5 variables, to be used for regular monthly update 
-    if passing only the stream argument without params it will update
-    all the variables listed in the era5_<stream>_<timestep>.json file.
-    \f
-    Grid and other stream settings are in the era5_<stream>_<timestep>.json file.
-    """
-    ####I'm separating this in update and , so eventually update can check if no yr/mn passed or only yr passed which was the last month downloaded
-    
-    update = True
-    if back:
-        print('You cannot use the backwards option with update')
-        sys.exit()
-    if queue:
-        dump_args(update, oformat, stream, list(param), year, list(month), timestep, back)
-    else:    
-        api_request(update, oformat, stream, list(param), year, list(month), timestep, back)
 
 
 @era5.command()
 @common_args
-@click.option('--param', '-p', multiple=True, required=True,
-             help="Grib code parameter for selected variable, pass as param.table i.e. 132.128")
 def download(oformat, param, stream, year, month, timestep, back, queue):
     """ 
     Download ERA5 variables, to be preferred 
@@ -271,14 +269,19 @@ def download(oformat, param, stream, year, month, timestep, back, queue):
     \f
     Grid and other stream settings are in the era5_<stream>_<timestep>.json files.
     """
-    update = False
-    if back and timestep != 'mon':
-        print('You can the backwards option only with monthly data')
+    if back and timestep not in ['mon', 'day']:
+        print('You can the backwards option only with monthly and some daily data')
+        sys.exit()
+    valid_format = list(iproduct(['tgz','zip'],['fire','agro']))
+    valid_format.extend( list(iproduct( ['netcdf', 'grib'],
+                         ['pressure','surface','land','wave'])))
+    if (oformat,stream) not in valid_format:
+        print(f'Download format {oformat} not available for {stream} product')
         sys.exit()
     if queue:
-        dump_args(update, oformat, stream, list(param), list(year), list(month), timestep, back)
+        dump_args(oformat, stream, list(param), list(year), list(month), timestep, back)
     else:    
-        api_request(update, oformat, stream, list(param), list(year), list(month), timestep, back)
+        api_request(oformat, stream, list(param), list(year), list(month), timestep, back)
 
 
 @era5.command()
@@ -290,10 +293,28 @@ def scan(infile):
     """
     with open(infile, 'r') as fj:
          args = json.load(fj)
-    api_request(args['update'], args['format'], args['stream'], 
+    api_request( args['format'], args['stream'], 
                 args['params'], args['year'], args['months'], 
                 args['timestep'], args['back'])
 
+@era5.command()
+@common_args
+@db_args
+def db(oformat, param, stream, year, month, timestep, mode):
+    """ 
+    Work on database, options are 
+    - update database,
+    - delete record,
+    - retrieve vairables list for a stream
+    - check missing files for a variable
+    """
+    
+    if mode == 'update':
+        update_db()
+    elif mode == 'delete':    
+        delete_record(stream, param, year, month, timestep, oformat)
+    else:    
+        list_variables(stream, timestep)
 
 if __name__ == '__main__':
     era5()
