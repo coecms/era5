@@ -119,8 +119,8 @@ def define_args(stream, tstep):
 def read_vars(stream):
     """Read parameters info from era5_vars.json file
     """
-    if stream == 'fire':
-        var_file = pkg_resources.resource_filename(__name__, 'data/era5_indices.json')
+    if stream in ['cems_fire', 'wfde5']:
+        var_file = pkg_resources.resource_filename(__name__, 'data/era5_derived.json')
     else:
         var_file = pkg_resources.resource_filename(__name__, 'data/era5_vars.json')
     with open(var_file,'r') as fj:
@@ -149,16 +149,18 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep, back):
         rdict['version'] = dsargs['version']
     if 'dataset' in dsargs.keys():
         rdict['dataset'] = dsargs['dataset']
+    if 'reference_dataset' in dsargs.keys():
+        rdict['reference_dataset'] = dsargs['reference_dataset']
     if dsargs['levels'] != []:
         rdict['pressure_level']= dsargs['levels']
     if tstep == 'mon':
         rdict['time'] = '00:00'
     elif tstep == 'day':
         rdict['day'] = daylist
-    elif tstep == 'hr':
+    elif tstep == 'hr' and dsargs['dsid'][:12] != 'derived-near':
         rdict['day'] = daylist
         rdict['time'] = timelist
-    # for pressure mon, fire and agro daily download a yera at the time
+    # for pressure mon, fire and agera5 daily download a yera at the time
     # for surface monthly donwload all years fully available
     if back:
         rdict['month'] = ["%.2d" % i for i in range(1,13)]
@@ -232,18 +234,26 @@ def target(stream, var, yr, mn, dsargs, tstep, back, oformat):
     if oformat == 'netcdf': oformat='nc'
     # did is era5land for land stream and era5 for anything else
     did = 'era5'
-    if stream in ['land','fire','agro']:
+    if stream in ['cems_fire','agera5', 'wfde5']:
+        did=stream
+    elif stream == 'land':
         did+=stream
     # set output path
     ydir = yr
-    if tstep in ['mon','day']:
+    # if monthly data change ydir and create empty daylist
+    if tstep == 'mon':
+        daylist = []
+        ydir = 'monthly'
+    else:
+        daylist = define_dates(yr,mn) 
+    if tstep in ['mon','day'] or stream == 'wfde5':
         fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_{yr}{mn}.{oformat}"
         if back:
             if stream == 'land':
                 fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_198101_201812.{oformat}"
             elif stream == 'pressure':
                 fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_{yr}01_{yr}12.{oformat}"
-            elif stream in ['fire', 'agro']:
+            elif stream in ['cems_fire', 'agera5', 'wfde5']:
                 fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_{yr}0101_{yr}1231.{oformat}"
             else:
                 fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_197901_201912.{oformat}"
@@ -251,15 +261,9 @@ def target(stream, var, yr, mn, dsargs, tstep, back, oformat):
     # define filename based on var, yr, mn and stream attributes
         startmn=mn
         fname = f"{var}_{did}_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.{oformat}"
-    # if monthly data change ydir and create empty daylist
-    if tstep == 'mon':
-        daylist = []
-        ydir = 'monthly'
-    else:
-        daylist = define_dates(yr,mn) 
     stagedir = os.path.join(cfg['staging'],stream, var,ydir)
-    if tstep == 'day':
-        destdir = os.path.join(cfg['datadir'],stream,var)
+    if stream in ['cems_fire','agera5','wfde5']:
+        destdir = os.path.join(cfg['derivdir'],stream,var)
     else:
         destdir = os.path.join(cfg['datadir'],stream,var,ydir)
     # create path if required

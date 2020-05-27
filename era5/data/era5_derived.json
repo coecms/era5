@@ -11,5 +11,14 @@
  "bi": ["bi", "burning_index"],
  "erc": ["erc", "energy_release_component"],
  "ic": ["ic", "ignition_component"],
- "sc": ["sc", "spread_component"]
+ "sc": ["sc", "spread_component"],
+ "ASurf": ["ASurf","grid_point_altitude"],
+ "Tair": ["Tair", "near_surface_air_temperature"],
+ "Qair": ["Qair", "near_surface_specific_humidity"],
+ "Wind": ["Wind", "near_surface_wind_speed"],
+ "Rainf": ["Rainf", "rainfall_flux"],
+ "Snowf": ["Snowf", "snowfall_flux"],
+ "PSurf": ["PSurf", "surface_air_pressure"],
+ "LWdown": ["LWdown", "surface_downwelling_longwave_radiation"],
+ "SWdown": ["SWdown", "surface_downwelling_shortwave_radiation"]
 }

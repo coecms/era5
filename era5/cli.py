@@ -98,7 +98,11 @@ def do_request(r):
             elif tempfn[-4:] == '.tgz':
                 era5log.info(f'Untarring and concatenating {tempfn} ...')
                 base = os.path.dirname(tempfn) 
-                cmd =  f"{cfg['untar']} {tempfn} -C {base}; {cfg['concat']} {base}/*.nc {fn[:-4]}.nc"
+                cmd =  f"{cfg['untar']} {tempfn} -C {base}; {cfg['concat']} {base}/*.nc {fn[:-4]}.nc; rm {base}/*.nc"
+            elif tempfn[-4:] == '.zip':
+                era5log.info(f'Unzipping and concatenating {tempfn} ...')
+                base = os.path.dirname(tempfn) 
+                cmd =  f"unzip {tempfn} -d {base}; {cfg['concat']} {base}/*.nc {fn[:-4]}.nc; rm {base}/*.nc"
             else:
                 cmd = "echo 'nothing to do'"
             era5log.debug(f"{cmd}")
@@ -216,7 +220,6 @@ def era5(debug):
     server using the cdsapi module.
     """
     global era5log 
-    print(f'debug: {debug}')
     era5log = config_log(debug)
 
 
@@ -225,9 +228,9 @@ def common_args(f):
         click.option('--queue', '-q', is_flag=True, default=False,
                      help="Create json file to add request to queue"),
         click.option('--stream', '-s', required=True,
-                     type=click.Choice(['surface','wave','pressure', 'land', 'fire', 'agro']),
+                     type=click.Choice(['surface','wave','pressure', 'land', 'cems_fire', 'agera5', 'wfde5']),
                      help="ECMWF stream currently operative analysis surface, pressure levels, "+\
-                     "wave model, ERA5 land, fire indices and agrometeorological indicators"),
+                     "wave model, ERA5 land, CESM_Fire, AgERA5, WFDE5"),
         click.option('--param', '-p', multiple=True,
              help="Grib code parameter for selected variable, pass as param.table i.e. 132.128. If not passed all parameters for the stream will be updated"),
         click.option('--year', '-y', multiple=True, required=True,
@@ -272,7 +275,7 @@ def download(oformat, param, stream, year, month, timestep, back, queue):
     if back and timestep not in ['mon', 'day']:
         print('You can the backwards option only with monthly and some daily data')
         sys.exit()
-    valid_format = list(iproduct(['tgz','zip'],['fire','agro']))
+    valid_format = list(iproduct(['tgz','zip'],['cems_fire','agera5', 'wfde5']))
     valid_format.extend( list(iproduct( ['netcdf', 'grib'],
                          ['pressure','surface','land','wave'])))
     if (oformat,stream) not in valid_format:
