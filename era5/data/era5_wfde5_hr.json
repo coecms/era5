@@ -7,5 +7,5 @@
     "levels": [],
     "params": [
             "Rainf", "Tair", "SWdown", "LWdown",
-            "Wind", "Snowf", "PSurf", "Qair", "ASurf"]
+            "Wind", "Snowf", "PSurf", "Qair"]
 }
