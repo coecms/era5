@@ -272,7 +272,7 @@ def download(oformat, param, stream, year, month, timestep, back, queue):
     \f
     Grid and other stream settings are in the era5_<stream>_<timestep>.json files.
     """
-    if back and timestep not in ['mon', 'day']:
+    if back and stream != 'wfde5' and timestep not in ['mon', 'day']:
         print('You can the backwards option only with monthly and some daily data')
         sys.exit()
     valid_format = list(iproduct(['tgz','zip'],['cems_fire','agera5', 'wfde5']))

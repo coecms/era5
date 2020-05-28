@@ -1,8 +1,8 @@
 {
-    "nthreads": 6,
-    "datadir": "/mnt/ub4/era5/era5-1/netcdf",
-    "staging": "/mnt/ub4/era5/era5-1/staging",
+    "nthreads": 8,
+    "datadir": "/mnt/ub4/era5/netcdf",
     "derivdir": "/mnt/ub4/era5/era5_derived/",
+    "staging": "/mnt/ub4/era5/staging",
     "logdir": "/mnt/pvol/era5/log",
     "getcmd": "curl -o",
     "resumewget": "wget -c -O",
@@ -11,8 +11,8 @@
     "qccmd": "ncdump -h",
     "nccmd": "nccopy -k 4 -d5 -s",
     "untar": "tar -xf",
-    "concat": "cdo --history -L -s -f nc4c -z zip_5 cat -setreftime,1900-01-01,00:00:00",
-    "db": "../db/era51_sqlite.db",
+    "concat": "cdo --history -L -s -f nc4c -z zip_5 cat -setreftime,1900-01-01,00:00:00", 
+    "db": "/mnt/pvol/era5/db/era5_sqlite.db",
     "slowips": [ "198" ],
     "altips": [ "105", "110", "153", "201", "210", "235", "236" ]
 }

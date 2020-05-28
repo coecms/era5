@@ -49,45 +49,52 @@ def query(conn, sql, tup):
         c.execute(sql, tup)
         return [ x[0] for x in c.fetchall() ]
 
+def crawl(g, xl, datadir):
+    """ crawl base directory for all netcdf files
+    """
+    # get stats for all files not in db yet
+    tsfmt = '%FT%T'
+    file_list = []
+    for f in g:
+        dn, fn = os.path.split(f)
+        if not fn in xl:
+            s = os.stat(f)
+            l = dn.replace(datadir + '/', '')
+            ts = datetime.fromtimestamp(s.st_mtime).strftime(tsfmt)
+            file_list.append( (fn, l, ts, s.st_size) )
+    return file_list
+
 def main():
     # read configuration and open ERA5 files database
     cfg = read_config()
     conn = db_connect(cfg)
     create_table(conn)
 
-    # List all netcdf files in datadir
-    d = os.path.join(cfg['datadir'], '*/*/*/*.nc')
-    print(f'Searching: {d} ...')
-    g = glob(d)
-    print(f'Found {len(g)} files.')
-
     # get a list of files already in db
     sql = 'select filename from file order by filename asc'
     xl = query(conn, sql, ())
     print(f'Records already in db: {len(xl)}')
 
-    # get stats for all files not in db yet
-    tsfmt = '%FT%T'
-    fl = []
-    for f in g:
-        dn, fn = os.path.split(f)
-        if not fn in xl:
-            s = os.stat(f)
-            l = dn.replace(cfg['datadir'] + '/', '')
-            ts = datetime.fromtimestamp(s.st_mtime).strftime(tsfmt)
-            fl.append( (fn, l, ts, s.st_size) )
-
-    print(f'New files found: {len(fl)}')
+    # List all netcdf files in datadir and derivdir
+    file_list = []
+    d1 = os.path.join(cfg['datadir'], '*/*/*/*.nc')
+    d2 = os.path.join(cfg['derivdir'], '*/*/*.nc')
+    for d,datadir in [(d1,cfg['datadir']), (d2,cfg['derivdir'])]:
+        print(f'Searching: {d} ...')
+        g = glob(d)
+        print(f'Found {len(g)} files.')
+        file_list.extend(crawl(g,xl,datadir))
+    print(f'New files found: {len(file_list)}')
 
     # insert into db
-    if len(fl) > 0:
+    if len(file_list) > 0:
         print('Updating db ...')
         with conn:
             c = conn.cursor()
         #sql = 'insert or replace into file (filename, location, ncidate, size) values (?,?,?,?)'
             sql = 'insert or ignore into file (filename, location, ncidate, size) values (?,?,?,?)'
         #print(sql)
-            c.executemany(sql, fl)
+            c.executemany(sql, file_list)
             c.execute('select total_changes()')
             print('Rows modified:', c.fetchall()[0][0])
 
