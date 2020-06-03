@@ -167,7 +167,7 @@
  "17.128": ["alnip", "near_ir_albedo_for_direct_radiation"],
  "18.128": ["alnid", "near_ir_albedo_for_diffuse_radiation"],
  "67.128": ["lai_hv", "leaf_area_index_high_vegetation"],
- "66.128": ["lai_lv", "leaf_area_index_high_vegetation"],
+ "66.128": ["lai_lv", "leaf_area_index_low_vegetation"],
  "182.260": ["evapt", "evapotranspiration"],
  "38.260": ["snowc", "snow_cover"],
  "101.228": ["evabs", "evaporation_from_bare_soil"],
