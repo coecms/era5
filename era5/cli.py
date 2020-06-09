@@ -28,7 +28,7 @@
 # depends on cdapi.py that can be downloaded from the Copernicus website
 #   https://cds.climate.copernicus.eu/api-how-to
 # contact: paolap@utas.edu.au
-# last updated 28/02/2019
+# last updated 09/06/2020
 #!/usr/bin/python
 
 import click
@@ -38,7 +38,9 @@ from itertools import product as iproduct
 from multiprocessing.dummy import Pool as ThreadPool
 from era5.era5_update_db import db_connect, query
 from era5.era5_functions import *
+from era5.era5_db import query, db_connect, update_db, delete_record, variables_stats
 import era5.cdsapi as cdsapi
+
 
 def era5_catch():
     debug_logger = logging.getLogger('era5_debug')
@@ -49,6 +51,7 @@ def era5_catch():
         click.echo('ERROR: %s'%e)
         debug_logger.exception(e)
         sys.exit(1)
+
 
 def do_request(r):
     """
@@ -248,6 +251,7 @@ def common_args(f):
         f = c(f)
     return f
 
+
 def db_args(f):
     '''Arguments to use with db sub-command '''
     constraints = [
@@ -257,7 +261,6 @@ def db_args(f):
     for c in reversed(constraints):
         f = c(f)
     return f
-
 
 
 @era5.command()
@@ -300,6 +303,7 @@ def scan(infile):
                 args['params'], args['year'], args['months'], 
                 args['timestep'], args['back'])
 
+
 @era5.command()
 @common_args
 @db_args
@@ -308,16 +312,17 @@ def db(oformat, param, stream, year, month, timestep, mode):
     Work on database, options are 
     - update database,
     - delete record,
-    - retrieve vairables list for a stream
+    - build variables list for a stream, check how many files are on disk,
+      on db and how many are expected for each of them
     - check missing files for a variable
     """
     
     if mode == 'update':
-        update_db()
+        update_db(cfg)
     elif mode == 'delete':    
         delete_record(stream, param, year, month, timestep, oformat)
     else:    
-        list_variables(stream, timestep)
+        variables_stats(cfg, stream, timestep)
 
 if __name__ == '__main__':
     era5()
