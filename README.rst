@@ -90,35 +90,41 @@ click era5 command code and input files
 -  era5_db.py -- has all the fuctions relating to db operations 
 -  update_json_vars.py -- script that uses the clef db to update
    era5_vars.json needs clef module
+-  setup.py and setup.cfg - to install module
 
 To configure the tool
 ~~~~~~~~~~~~~~~~~~~~~
 
--  config.json -- to set configuration: ..+ staging, data, logs
-   directories, ..+ database name and location, ..+ bash commands to
-   download, resume download, qc and compress files, ..+ number of
-   threads, ..+ number of resume download attempts, ..+ slow and fast
-   ips
+Thes efiles are in era5/data/
+
+-  config.json -- to set configuration:
+   * staging, data, logs directories,
+   * database name and location,
+   * bash commands to download, resume download, qc, compress and concatenate files,
+   * number of threads,
+   * number of resume download attempts,
+   * slow and fast ips
 
 -  era5_pressure_hr.json -- pressure levels stream arguments to build
    request and list of params to download at hourly temporal resolution
--  era5\_pressure\_mon.json -- pressure levels stream arguments to build
+-  era5_pressure_mon.json -- pressure levels stream arguments to build
    request and list of params to download at monthly temporal resolution
--  era5\_wave\_hr.json -- wave model surface level stream arguments to
+-  era5_wave_hr.json -- wave model surface level stream arguments to
    build request and list of params to download at hourly temporal
    resolution
--  era5\_wave\_mon.json -- wave model surface level stream arguments to
+-  era5_wave_mon.json -- wave model surface level stream arguments to
    build request and list of params to download at monthly temporal
    resolution
--  era5\_surface\_hr.json -- surface level stream arguments to build
+-  era5_surface_hr.json -- surface level stream arguments to build
    request and list of params to download at hourly temporal resolution
--  era5\_surface\_mon.json -- surface level stream arguments to build
+-  era5_surface_mon.json -- surface level stream arguments to build
    request and list of params to download at monthly temporal resolution
--  era5\_land\_hr.json -- Land model surface level stream arguments to
+-  era5_land_hr.json -- Land model surface level stream arguments to
    build request and list of params to download at hourly temporal
    resolution
--  era5\_vars.json -- Json file with list of grib codes that can be
+-  era5_vars.json -- Json file with list of grib codes that can be
    downloaded from CDS and respective variable and cds names
+-  era5_derived.json -- Json file with list of derived products variables
 
 Other files
 ~~~~~~~~~~~
@@ -126,7 +132,6 @@ Other files
 (not included in git)
 
 -  era5.sqlite -- sqlite database
--  setup.py.template -- template for setup.py
 
 Modified cdsapi code
 ~~~~~~~~~~~~~~~~~~~~
