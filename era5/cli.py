@@ -36,7 +36,7 @@ import os
 import sys
 from itertools import product as iproduct
 from multiprocessing.dummy import Pool as ThreadPool
-from era5.era5_update_db import db_connect, query
+#from era5.era5_update_db import db_connect, query
 from era5.era5_functions import *
 from era5.era5_db import query, db_connect, update_db, delete_record, variables_stats
 import era5.cdsapi as cdsapi
@@ -228,24 +228,33 @@ def era5(debug):
 
 def common_args(f):
     constraints = [
-        click.option('--queue', '-q', is_flag=True, default=False,
-                     help="Create json file to add request to queue"),
+        click.option('--month', '-m', multiple=True,
+                     help="month/s to download, if not specified all months for year will be downloaded "),
+        click.option('--timestep', '-t', type=click.Choice(['mon','hr','day']), default='hr',
+                     help="timestep hr or mon, if not specified hr"),
+        click.option('--format', 'oformat', type=click.Choice(['grib','netcdf','zip','tgz']), default='netcdf',
+                     help="Format output: grib, nc (for netcdf), tgz (compressed tar file) or zip")
+    ]
+    for c in reversed(constraints):
+        f = c(f)
+    return f
+
+
+def download_args(f):
+    '''Arguments to use with db sub-command '''
+    constraints = [
         click.option('--stream', '-s', required=True,
                      type=click.Choice(['surface','wave','pressure', 'land', 'cems_fire', 'agera5', 'wfde5']),
                      help="ECMWF stream currently operative analysis surface, pressure levels, "+\
                      "wave model, ERA5 land, CESM_Fire, AgERA5, WFDE5"),
         click.option('--param', '-p', multiple=True,
-             help="Grib code parameter for selected variable, pass as param.table i.e. 132.128. If not passed all parameters for the stream will be updated"),
+             help="Grib code parameter for selected variable, pass as param.table i.e. 132.128. If not passed all parameters in <stream_tstep>.json will be downloaded"),
         click.option('--year', '-y', multiple=True, required=True,
                      help="year to download"),
-        click.option('--month', '-m', multiple=True,
-                     help="month/s to download, if not specified all months for year will be downloaded "),
-        click.option('--timestep', '-t', type=click.Choice(['mon','hr','day']), default='hr',
-                     help="timestep hr or mon, if not specified hr"),
+        click.option('--queue', '-q', is_flag=True, default=False,
+                     help="Create json file to add request to queue"),
         click.option('--back', '-b', is_flag=True, default=False,
                      help="Request backwards all years and months as one file, works only for monthly or daily data"),
-        click.option('--format', 'oformat', type=click.Choice(['grib','netcdf','zip','tgz']), default='netcdf',
-                     help="Format output: grib, nc (for netcdf), tgz (compressed tar file) or zip")
     ]
     for c in reversed(constraints):
         f = c(f)
@@ -255,7 +264,15 @@ def common_args(f):
 def db_args(f):
     '''Arguments to use with db sub-command '''
     constraints = [
-        click.option('-m','--mode', type=click.Choice(['list','delete','update']), default='update',
+        click.option('--stream', '-s', required=False,
+                     type=click.Choice(['surface','wave','pressure', 'land', 'cems_fire', 'agera5', 'wfde5']),
+                     help="ECMWF stream currently operative analysis surface, pressure levels, "+\
+                     "wave model, ERA5 land, CESM_Fire, AgERA5, WFDE5. It is required in list and delete mode."),
+        click.option('--param', '-p', multiple=True,
+             help="Variable name. At least one value is required in delete mode. If not passed in list mode all variables <stream_tstep>.json will be listed"),
+        click.option('--year', '-y', multiple=True, required=False,
+                     help="year to download"),
+        click.option('-a','--action', type=click.Choice(['list','delete','update']), default='update',
         help="db subcommand running mode: `update` (default) updates the db, `delete` deletes a record from db, `list` list all variables in db for the stream")
     ]
     for c in reversed(constraints):
@@ -265,6 +282,7 @@ def db_args(f):
 
 @era5.command()
 @common_args
+@download_args
 def download(oformat, param, stream, year, month, timestep, back, queue):
     """ 
     Download ERA5 variables, to be preferred 
@@ -307,7 +325,7 @@ def scan(infile):
 @era5.command()
 @common_args
 @db_args
-def db(oformat, param, stream, year, month, timestep, mode):
+def db(oformat, param, stream, year, month, timestep, action):
     """ 
     Work on database, options are 
     - update database,
@@ -317,12 +335,16 @@ def db(oformat, param, stream, year, month, timestep, mode):
     - check missing files for a variable
     """
     
-    if mode == 'update':
-        update_db(cfg)
-    elif mode == 'delete':    
-        delete_record(stream, param, year, month, timestep, oformat)
+    if action == 'update':
+        update_db(cfg, stream, timestep, list(param))
+    elif action == 'delete':    
+        if not stream or not param:
+            print('A stream and at least one variable should be selected: -s <stream> -p <var-name>')
+            sys.exit()
+        delete_record(cfg, stream, list(param), list(year), list(month), timestep) #, oformat)
     else:    
-        variables_stats(cfg, stream, timestep)
+        varlist = [] 
+        variables_stats(cfg, stream, timestep, list(param))
 
 if __name__ == '__main__':
     era5()

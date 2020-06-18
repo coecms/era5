@@ -41,7 +41,7 @@
  "203.128": ["o3", "ozone_mass_mixing_ratio"],
  "60.128": ["pv", "potential_vorticity"],
  "157.128": ["r", "relative_humidity"],
- "205.128": ["ro", "runoff      "],
+ "205.128": ["ro", "runoff"],
  "34.128": ["sst", "sea_surface_temperature"],
  "31.128": ["siconc", "sea_ice_cover"],
  "198.128": ["src", "skin_reservoir_content"],

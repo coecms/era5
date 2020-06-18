@@ -19,11 +19,13 @@
 # contact: paolap@utas.edu.au
 # last updated 28/04/2020
 
-from glob import glob
 import os
-from datetime import datetime
 import sqlite3
-#from era5.era5_functions import read_config
+from datetime import datetime
+from glob import glob
+from itertools import repeat
+from era5.era5_functions import define_args, read_vars
+import sys
 
 
 def db_connect(cfg):
@@ -69,17 +71,22 @@ def crawl(g, xl, basedir):
     return file_list
 
 
-def build_match(stream, var, tstep):
-    """ Build matching expression based on stream and timestep
+def set_query(st, var, tstep, yr='____', mn='%'):
+    """ Set up the sql query based on constraints
     """
-    if tstep == 'hr':
-        match=f"{stream}/{var}/____"
-    elif tstep == 'mon':
-        match=f"{stream}/{var}/monthly"
-    return match
+    if st in ['wfde5','cems_fire','agera5']:
+        fname = f'{var}_%_{yr}{mn}01_%.nc'
+        location = f'{st}/{var}'
+    elif tstep == 'hr':
+        fname = f'{var}_%_{yr}{mn}01_%.nc'
+        location = f'{st}/{var}/{yr}'
+    else:
+        fname = f'{var}_%_mon_%_{yr}{mn}.nc'
+        location = f'{st}/{var}/monthly'
+    return fname, location
 
 
-def get_basedir(stream):
+def get_basedir(cfg, stream):
     """ Return base directory base don stream
     """
     if stream in ['cems_fire', 'agera5', 'wfde5']:
@@ -91,15 +98,15 @@ def get_basedir(stream):
 def list_files(basedir, match):
     """ List all matching files for given base dir, stream and tstep
     """
-    d = os.path.join(basedir, match)
-    print(f'Searching: {d} ...')
+    fsmatch = match.replace("____", "????")
+    d = os.path.join(basedir, fsmatch, "*.nc")
+    print(f'Searching on filesystem: {d} ...')
     g = glob(d)
     print(f'Found {len(g)} files.')
-    file_list = crawl(g,xl,basedir)
-    return file_list
+    return g 
 
 
-def exp_files(stream,tstep):
+def exp_files(stream, tstep):
     """ Return expected number of files to date for stream/tstep
     """
     #wfde5 and agera5 have fixed lengths
@@ -134,65 +141,64 @@ def exp_files(stream,tstep):
     return nfiles
 
 
-def compare(basedir, match, var):
+def compare(conn, basedir, match, var, nfiles):
     """
     """
     # get a list of matching files on filesystem
-    match2 = match.replace("____","????")
-    # replace with list_files
-    d = os.path.join(basedir,match2)
-    print(f'Searching: {d} ...')
-    g = glob(d)
-    total = len(g)
+    fs_list = list_files(basedir, match)
+    total = len(fs_list)
     print(f'Found {total} files for {var}.')
     # up to here
     if nfiles == total:
-        print(f'All expected files are present for {var}')
+        print(f'All expected files are present for {var}\n')
     elif nfiles > total:
-        print(f'{nfiles-total} files are missing for {var}')
+        print(f'{nfiles-total} files are missing for {var}\n')
     else:
-        print(f'{total-nfiles} extra files than expected for {var}')
+        print(f'{total-nfiles} extra files than expected for {var}\n')
     # get a list of matching files in db
     sql = f"SELECT filename FROM file AS t WHERE t.location LIKE '{match}' ORDER BY filename ASC"
     xl = query(conn, sql, ())
     print(f'Records already in db: {len(xl)}')
 
 
-def update_db(cfg, stream, tstep):
+def update_db(cfg, stream, tstep, var):
     # read configuration and open ERA5 files database
     conn = db_connect(cfg)
     create_table(conn)
 
-    # get a list of files already in db
-
     # List all netcdf files in datadir and derivdir
     if not stream:
         sql = 'SELECT filename FROM FILE ORDER BY filename ASC'
-        xl = query(conn, sql, ())
-        print(f'Records already in db: {len(xl)}')
-        filelist = list_files(cfg['datadir'],'*/*/*/*.nc')
-        filelist.extend( list_files(cfg['derivdir'],'*/*/*.nc') )
-        print(f'New files found: {len(file_list)}')
+        fs_list = list_files(cfg['datadir'],'*/*/*/*.nc')
+        fs_list.extend( list_files(cfg['derivdir'],'*/*/*.nc') )
     else:
-        match = build_match(stream, '*', tstep)
-        basedir = get_basedir(stream)
-        filelist = list_files(basedir, match)
-        print(f'New files found: {len(file_list)}')
+        fs_list = []
+        if not var:
+            var=['*']
+        for v in var:
+            fname, location = set_query(stream, v, tstep)
+            basedir = get_basedir(cfg, stream)
+            sql = f"SELECT filename FROM file AS t WHERE t.location LIKE '{location}' ORDER BY filename ASC"
+            fs_list.extend(list_files(basedir, location))
 
+    xl = query(conn, sql, ())
+    print(f'Records already in db: {len(xl)}')
+    print(f'New files found: {len(fs_list)-len(xl)}')
+    stats_list = crawl(fs_list, xl, basedir)
     # insert into db
-    if len(file_list) > 0:
+    if len(stats_list) > 0:
         print('Updating db ...')
         with conn:
             c = conn.cursor()
             sql = 'INSERT OR IGNORE INTO file (filename, location, ncidate, size) values (?,?,?,?)'
             #debug(sql)
-            c.executemany(sql, file_list)
+            c.executemany(sql, stats_list)
             c.execute('select total_changes()')
             print('Rows modified:', c.fetchall()[0][0])
     print('--- Done ---')
 
 
-def variables_stats(cfg,stream,tstep,varlist):
+def variables_stats(cfg, stream, tstep, varlist=[]):
     """
     """
     # read configuration and open ERA5 files database
@@ -206,12 +212,41 @@ def variables_stats(cfg,stream,tstep,varlist):
         vardict = read_vars(stream)
         print('Variables currently updated for this stream are:\n')
         for code in dsargs['params']:
-            print(f'{vardict[code][0]} - {vardict[code][1]} - {code}')
+            print(f'{vardict[code][0]}   -   {vardict[code][1]}   -   {code}')
             varlist.append(vardict[code][0])
     # calculate expected number of files
     nfiles = exp_files(stream, tstep)
-    basedir = get_basedir(stream)
+    basedir = get_basedir(cfg, stream)
 
     for var in varlist:
-        match = build_match(stream, var, tstep)
-        compare(basedir, match, var)
+        fanme, location = set_query(stream, var, tstep)
+        compare(conn, basedir, location, var, nfiles)
+
+
+def delete_record(cfg, st, var, yr, mn, tstep):
+    # connect to db
+    conn = db_connect(cfg)
+    mn, yr, var = tuple(['%'] if not x else x for x in [mn, yr, var] ) 
+
+    # Set up query
+    for v in var:
+        for y in yr:
+            for m in mn:
+                fname, location = set_query(st, v, tstep, y, m)
+                sql = f'SELECT filename FROM file WHERE file.location="{location}" AND file.filename LIKE "{fname}"'
+                print(sql)
+                xl = query(conn, sql, ())
+                print(f'Selected records in db: {xl}')
+    # Delete from db
+                if len(xl) > 0:
+                    confirm = input('Confirm deletion from database: Y/N   ')
+                    if confirm == 'Y':
+                        print('Updating db ...')
+                        for fname in xl:
+                            with conn:
+                                c = conn.cursor()
+                                sql = f'DELETE from file where filename="{fname}" AND location="{location}"'
+                                c.execute(sql)
+                                c.execute('select total_changes()')
+                                print('Rows modified:', c.fetchall()[0][0])
+    return

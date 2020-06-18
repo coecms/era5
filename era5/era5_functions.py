@@ -165,7 +165,7 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep, back):
     if back:
         rdict['month'] = ["%.2d" % i for i in range(1,13)]
         if dsargs['dsid'] == 'reanalysis-era5-land-monthly-means':
-            rdict['year'] = ["%.2d" % i for i in range(1981,2019)]
+            rdict['year'] = ["%.2d" % i for i in range(1981,2020)]
         elif dsargs['dsid'] == 'reanalysis-era5-single-levels-monthly-means':
             rdict['year'] = ["%.2d" % i for i in range(1979,2020)]
     return rdict 
@@ -250,7 +250,7 @@ def target(stream, var, yr, mn, dsargs, tstep, back, oformat):
         fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_{yr}{mn}.{oformat}"
         if back:
             if stream == 'land':
-                fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_198101_201812.{oformat}"
+                fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_198101_201912.{oformat}"
             elif stream == 'pressure':
                 fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_{yr}01_{yr}12.{oformat}"
             elif stream in ['cems_fire', 'agera5', 'wfde5']:
