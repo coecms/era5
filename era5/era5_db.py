@@ -99,6 +99,7 @@ def list_files(basedir, match):
     """ List all matching files for given base dir, stream and tstep
     """
     fsmatch = match.replace("____", "????")
+    fsmatch = fsmatch.replace("%", "*")
     d = os.path.join(basedir, fsmatch, "*.nc")
     print(f'Searching on filesystem: {d} ...')
     g = glob(d)
@@ -147,7 +148,7 @@ def compare(conn, basedir, match, var, nfiles):
     # get a list of matching files on filesystem
     fs_list = list_files(basedir, match)
     total = len(fs_list)
-    print(f'Found {total} files for {var}.')
+    #print(f'Found {total} files for {var}.')
     # up to here
     if nfiles == total:
         print(f'All expected files are present for {var}\n')
@@ -169,12 +170,12 @@ def update_db(cfg, stream, tstep, var):
     # List all netcdf files in datadir and derivdir
     if not stream:
         sql = 'SELECT filename FROM FILE ORDER BY filename ASC'
-        fs_list = list_files(cfg['datadir'],'*/*/*/*.nc')
-        fs_list.extend( list_files(cfg['derivdir'],'*/*/*.nc') )
+        fs_list = list_files(cfg['datadir'],'*/*/*')
+        fs_list2 = list_files(cfg['derivdir'],'*/*')
     else:
         fs_list = []
         if not var:
-            var=['*']
+            var=['%']
         for v in var:
             fname, location = set_query(stream, v, tstep)
             basedir = get_basedir(cfg, stream)
@@ -182,9 +183,14 @@ def update_db(cfg, stream, tstep, var):
             fs_list.extend(list_files(basedir, location))
 
     xl = query(conn, sql, ())
+    if not stream:
+        stats_list = crawl(fs_list, xl, cfg['datadir'])
+        stats_list.extend( crawl(fs_list2, xl, cfg['derivdir']))
+        fs_list.extend(fs_list2)
+    else:
+        stats_list = crawl(fs_list, xl, basedir)
     print(f'Records already in db: {len(xl)}')
     print(f'New files found: {len(fs_list)-len(xl)}')
-    stats_list = crawl(fs_list, xl, basedir)
     # insert into db
     if len(stats_list) > 0:
         print('Updating db ...')
@@ -207,7 +213,6 @@ def variables_stats(cfg, stream, tstep, varlist=[]):
     # If no variable is selected list all variables in stream json file
     dsargs = define_args(stream, tstep)
     if not any(varlist):
-        #DELETE?
         varlist=[]
         vardict = read_vars(stream)
         print('Variables currently updated for this stream are:\n')
@@ -219,7 +224,7 @@ def variables_stats(cfg, stream, tstep, varlist=[]):
     basedir = get_basedir(cfg, stream)
 
     for var in varlist:
-        fanme, location = set_query(stream, var, tstep)
+        fname, location = set_query(stream, var, tstep)
         compare(conn, basedir, location, var, nfiles)
 
 
