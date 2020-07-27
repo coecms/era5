@@ -185,7 +185,7 @@ def api_request(oformat, stream, params, yr, mntlist, tstep, back):
                     continue
                 if mars:
                     rdict = build_mars(dsargs, y, mn, varp, oformat, tstep, back)
-                    destdir = destdir.replace('/era5/','/era5/era5-1/')
+                    #destdir = destdir.replace('/era5/','/era5/era5-1/')
                 else:
                     rdict = build_dict(dsargs, y, mn, cdsname, daylist, oformat, tstep, back)
                 rqlist.append((dsargs['dsid'], rdict, os.path.join(stagedir,fname),
