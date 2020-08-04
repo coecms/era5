@@ -172,27 +172,27 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep, back):
 
 def build_mars(dsargs, yr, mn, param, oformat, tstep, back):
     """ Create request for MARS """
-    datestr = f'{yr}-{mn}-01/to/{yr}-{mn}-{monthrange(int(yr),int(mn))[1]}'
     rdict={ 'param'    : param,
-            'date': datestr,
             'levtype': 'pl',
-            'stream': 'oper',
             'type': 'an',
             'grid' : '0.25/0.25',
             'format'      : oformat,
             'area'        : dsargs['area']} 
+    datestr = f'{yr}-{mn}-01/to/{yr}-{mn}-{monthrange(int(yr),int(mn))[1]}'
+    if tstep == 'mon':
+        rdict['time'] = '00:00'
+        rdict['stream'] = 'moda'
+        if back:
+            datestr = ''
+            for m in range(1,13):
+                datestr = (datestr+yr+(str(m)).zfill(2)+'01/')
+            datestr = datestr[:-1]
+    else:
+        rdict['stream'] = 'oper'
+        rdict['time'] = '00:00:00/01:00:00/02:00:00/03:00:00/04:00:00/05:00:00/06:00:00/07:00:00/08:00:00/09:00:00/10:00:00/11:00:00/12:00:00/13:00:00/14:00:00/15:00:00/16:00:00/17:00:00/18:00:00/19:00:00/20:00:00/21:00:00/22:00:00/23:00:00' 
     if dsargs['levels'] != []:
         rdict['levelist']= dsargs['levels']
-    #if tstep == 'mon':
-    #    rdict['time'] = '00:00'
-    #    if back:
-    #        rdict['month'] = ["%.2d" % i for i in range(1,13)]
-    #        if dsargs['dsid'] == 'reanalysis-era5-land-monthly-means':
-    #            rdict['year'] = ["%.2d" % i for i in range(1981,2019)]
-    #        elif dsargs['dsid'] == 'reanalysis-era5-single-levels-monthly-means':
-    #            rdict['year'] = ["%.2d" % i for i in range(1979,2020)]
-    #else:
-    rdict['time'] = '00:00:00/01:00:00/02:00:00/03:00:00/04:00:00/05:00:00/06:00:00/07:00:00/08:00:00/09:00:00/10:00:00/11:00:00/12:00:00/13:00:00/14:00:00/15:00:00/16:00:00/17:00:00/18:00:00/19:00:00/20:00:00/21:00:00/22:00:00/23:00:00' 
+    rdict['date'] = datestr
     return rdict 
 
 
@@ -274,11 +274,14 @@ def target(stream, var, yr, mn, dsargs, tstep, back, oformat):
     return stagedir, destdir, fname, daylist
 
 
-def dump_args(of, st, ps, yr, mns, tstep, back):
+def dump_args(of, st, ps, yr, mns, tstep, back, urgent):
     """ Create arguments dictionary and dump to json file
     """
     tstamp = datetime.now().strftime("%Y%m%d%H%M%S") 
     fname = f'era5_request_{tstamp}.json'
+    requestdir = cfg['requestdir'] 
+    if urgent:
+        requestdir += 'Urgent/'
     args = {}
     args['format'] = of
     args['stream'] = st
@@ -287,7 +290,7 @@ def dump_args(of, st, ps, yr, mns, tstep, back):
     args['months'] = mns
     args['timestep'] = tstep
     args['back'] = back
-    with open(fname, 'w+') as fj:
+    with open(requestdir + fname, 'w+') as fj:
          json.dump(args, fj)
     return
 

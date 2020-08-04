@@ -34,6 +34,7 @@
 import click
 import os
 import sys
+import yaml
 from itertools import product as iproduct
 from multiprocessing.dummy import Pool as ThreadPool
 #from era5.era5_update_db import db_connect, query
@@ -61,6 +62,7 @@ def do_request(r):
     [2] file staging path
     [3] file target path
     [4] ip for download url
+    [5] userid
 
     Download to staging area first, compress netcdf (nccopy)
     """
@@ -68,8 +70,11 @@ def do_request(r):
     fn = r[3]
   
     # the actual retrieve part
+    # set api key explicitly so you can alternate
+    with open(f'/mnt/pvol/era5/.cdsapirc{r[5]}', 'r') as f:
+        credentials = yaml.safe_load(f)
     # create client instance
-    c = cdsapi.Client()
+    c = cdsapi.Client(url=credentials['url'], key=credentials['key'], verify=1)
     era5log.info(f'Requesting {tempfn} ... ')
     era5log.info(f'Request: {r[1]}')
     # need to capture exceptions
@@ -130,6 +135,7 @@ def api_request(oformat, stream, params, yr, mntlist, tstep, back):
     rqlist = []
     # list of faster ips to alternate
     ips = cfg['altips']
+    users = cfg['users']
     i = 0 
     # list of years when ERA5.1 should be donwloaded instead of ERA5
     era51 = [str(y) for y in range(2000,2007)]
@@ -185,12 +191,12 @@ def api_request(oformat, stream, params, yr, mntlist, tstep, back):
                     continue
                 if mars:
                     rdict = build_mars(dsargs, y, mn, varp, oformat, tstep, back)
-                    #destdir = destdir.replace('/era5/','/era5/era5-1/')
                 else:
                     rdict = build_dict(dsargs, y, mn, cdsname, daylist, oformat, tstep, back)
                 rqlist.append((dsargs['dsid'], rdict, os.path.join(stagedir,fname),
-                           os.path.join(destdir, fname), ips[i % len(ips)])) 
-                # progress index to alternate between ips
+                           os.path.join(destdir, fname), ips[i % len(ips)],
+                           users[i % len(users)])) 
+                # progress index to alternate between ips and users
                 i+=1
                 era5log.info(f'Added request for {fname}')
             if back:
@@ -255,6 +261,8 @@ def download_args(f):
                      help="Create json file to add request to queue"),
         click.option('--back', '-b', is_flag=True, default=False,
                      help="Request backwards all years and months as one file, works only for monthly or daily data"),
+        click.option('--urgent', '-u', is_flag=True, default=False,
+                     help="high priority request, default False, if specified request is saved in Urgent folder which is pick first by wrapper. Works only for queued requests.")
     ]
     for c in reversed(constraints):
         f = c(f)
@@ -283,7 +291,7 @@ def db_args(f):
 @era5.command()
 @common_args
 @download_args
-def download(oformat, param, stream, year, month, timestep, back, queue):
+def download(oformat, param, stream, year, month, timestep, back, queue, urgent):
     """ 
     Download ERA5 variables, to be preferred 
     if adding a new variable,
@@ -303,7 +311,7 @@ def download(oformat, param, stream, year, month, timestep, back, queue):
         print(f'Download format {oformat} not available for {stream} product')
         sys.exit()
     if queue:
-        dump_args(oformat, stream, list(param), list(year), list(month), timestep, back)
+        dump_args(oformat, stream, list(param), list(year), list(month), timestep, back, urgent)
     else:    
         api_request(oformat, stream, list(param), list(year), list(month), timestep, back)
 
