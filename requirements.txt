@@ -1,0 +1,4 @@
+# Add general dependencies here
+# Optional dependencies e.g. [dev] are added in `setup.cfg`
+click
+#sqlalchemy

@@ -1,0 +1,15 @@
+{
+    "area": "90/-180/-90/179.75",
+    "dsid": "cems-fire-historical",
+    "version": "3.1",
+    "format": "tgz",
+    "version": "3.1",
+    "product_type": "reanalysis",
+    "dataset": "Consolidated dataset",
+    "grid": "global",
+    "levels": [],
+    "params": [
+	    "bui", "danger_risk", "dc", "dmc",
+            "dsr", "ffmc", "fwi", "isi", "fdi",
+	    "kbdi", "bi", "erc", "ic", "sc"]
+}

@@ -21,11 +21,11 @@
 
 import logging
 import json
-import cdsapi
+import os
+import pkg_resources
+import subprocess as sp
 from calendar import monthrange
 from datetime import datetime
-import os
-import subprocess as sp
 
 
 def config_log(debug):
@@ -76,7 +76,8 @@ def read_config():
     Read config from config.json file
     """
     try:
-        with open('config.json','r') as fj:
+        cfg_file = pkg_resources.resource_filename(__name__, 'data/config.json')
+        with open(cfg_file,'r') as fj:
             cfg = json.load(fj)
     except FileNotFoundError:
         print(f"Can't find file config.json in {os.getcwd()}")
@@ -109,15 +110,20 @@ def define_args(stream, tstep):
     ''' Return parameters and levels lists and step, time depending on stream type'''
     # this import the stream_dict dictionary <stream> : ['time','step','params','levels']
     # I'm getting the information which is common to all pressure/surface/wave variables form here, plus a list of the variables we download for each stream
-    with open(f'era5_{stream}_{tstep}.json', 'r') as fj:
+    stream_file = pkg_resources.resource_filename(__name__, f'data/era5_{stream}_{tstep}.json')
+    with open(stream_file, 'r') as fj:
         dsargs = json.load(fj)
     return  dsargs
 
 
-def read_vars():
+def read_vars(stream):
     """Read parameters info from era5_vars.json file
     """
-    with open('era5_vars.json','r') as fj:
+    if stream in ['cems_fire', 'wfde5']:
+        var_file = pkg_resources.resource_filename(__name__, 'data/era5_derived.json')
+    else:
+        var_file = pkg_resources.resource_filename(__name__, 'data/era5_vars.json')
+    with open(var_file,'r') as fj:
          vardict = json.load(fj)
     return vardict 
 
@@ -139,19 +145,54 @@ def build_dict(dsargs, yr, mn, var, daylist, oformat, tstep, back):
             'area'        : dsargs['area']} 
     if 'product_type' in dsargs.keys():
         rdict['product_type'] = dsargs['product_type']
+    if 'version' in dsargs.keys():
+        rdict['version'] = dsargs['version']
+    if 'dataset' in dsargs.keys():
+        rdict['dataset'] = dsargs['dataset']
+    if 'reference_dataset' in dsargs.keys():
+        rdict['reference_dataset'] = dsargs['reference_dataset']
     if dsargs['levels'] != []:
         rdict['pressure_level']= dsargs['levels']
     if tstep == 'mon':
         rdict['time'] = '00:00'
-        if back:
-            rdict['month'] = ["%.2d" % i for i in range(1,13)]
-            if dsargs['dsid'] == 'reanalysis-era5-land-monthly-means':
-                rdict['year'] = ["%.2d" % i for i in range(1981,2019)]
-            elif dsargs['dsid'] == 'reanalysis-era5-single-levels-monthly-means':
-                rdict['year'] = ["%.2d" % i for i in range(1979,2020)]
-    else:
+    elif tstep == 'day':
+        rdict['day'] = daylist
+    elif tstep == 'hr' and dsargs['dsid'][:12] != 'derived-near':
         rdict['day'] = daylist
         rdict['time'] = timelist
+    # for pressure mon, fire and agera5 daily download a yera at the time
+    # for surface monthly donwload all years fully available
+    if back:
+        rdict['month'] = ["%.2d" % i for i in range(1,13)]
+        if dsargs['dsid'] == 'reanalysis-era5-land-monthly-means':
+            rdict['year'] = ["%.2d" % i for i in range(1981,2020)]
+        elif dsargs['dsid'] == 'reanalysis-era5-single-levels-monthly-means':
+            rdict['year'] = ["%.2d" % i for i in range(1979,2020)]
+    return rdict 
+
+def build_mars(dsargs, yr, mn, param, oformat, tstep, back):
+    """ Create request for MARS """
+    rdict={ 'param'    : param,
+            'levtype': 'pl',
+            'type': 'an',
+            'grid' : '0.25/0.25',
+            'format'      : oformat,
+            'area'        : dsargs['area']} 
+    datestr = f'{yr}-{mn}-01/to/{yr}-{mn}-{monthrange(int(yr),int(mn))[1]}'
+    if tstep == 'mon':
+        rdict['time'] = '00:00'
+        rdict['stream'] = 'moda'
+        if back:
+            datestr = ''
+            for m in range(1,13):
+                datestr = (datestr+yr+(str(m)).zfill(2)+'01/')
+            datestr = datestr[:-1]
+    else:
+        rdict['stream'] = 'oper'
+        rdict['time'] = '00:00:00/01:00:00/02:00:00/03:00:00/04:00:00/05:00:00/06:00:00/07:00:00/08:00:00/09:00:00/10:00:00/11:00:00/12:00:00/13:00:00/14:00:00/15:00:00/16:00:00/17:00:00/18:00:00/19:00:00/20:00:00/21:00:00/22:00:00/23:00:00' 
+    if dsargs['levels'] != []:
+        rdict['levelist']= dsargs['levels']
+    rdict['date'] = datestr
     return rdict 
 
 
@@ -185,34 +226,46 @@ def file_down(url, tempfn, size, era5log):
     return False
     
 
-def target(stream, var, yr, mn, dsargs, tstep, back):
+def target(stream, var, yr, mn, dsargs, tstep, back, oformat):
     """Build output paths and filename, 
        build list of days to process based on year and month
     """
+    # temporary fix to go from netcdf to nc
+    if oformat == 'netcdf': oformat='nc'
     # did is era5land for land stream and era5 for anything else
     did = 'era5'
-    if stream == 'land':
-        did+='land'
+    if stream in ['cems_fire','agera5', 'wfde5']:
+        did=stream
+    elif stream == 'land':
+        did+=stream
     # set output path
+    ydir = yr
+    # if monthly data change ydir and create empty daylist
     if tstep == 'mon':
-        ydir = 'monthly'
-        fname = f"{var}_{did}_mon_{dsargs['grid']}_{yr}{mn}.nc"
         daylist = []
+        ydir = 'monthly'
+    else:
+        daylist = define_dates(yr,mn) 
+    if tstep in ['mon','day'] or stream == 'wfde5':
+        fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_{yr}{mn}.{oformat}"
         if back:
             if stream == 'land':
-                fname = f"{var}_{did}_mon_{dsargs['grid']}_198101_201812.nc"
-            if stream == 'pressure':
-                fname = f"{var}_{did}_mon_{dsargs['grid']}_{yr}01_{yr}12.nc"
+                fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_198101_201912.{oformat}"
+            elif stream == 'pressure':
+                fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_{yr}01_{yr}12.{oformat}"
+            elif stream in ['cems_fire', 'agera5', 'wfde5']:
+                fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_{yr}0101_{yr}1231.{oformat}"
             else:
-                fname = f"{var}_{did}_mon_{dsargs['grid']}_197901_201912.nc"
+                fname = f"{var}_{did}_{tstep}_{dsargs['grid']}_197901_201912.{oformat}"
     else:
-        ydir = yr
     # define filename based on var, yr, mn and stream attributes
         startmn=mn
-        daylist = define_dates(yr,mn) 
-        fname = f"{var}_{did}_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.nc"
+        fname = f"{var}_{did}_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.{oformat}"
     stagedir = os.path.join(cfg['staging'],stream, var,ydir)
-    destdir = os.path.join(cfg['datadir'],stream,var,ydir)
+    if stream in ['cems_fire','agera5','wfde5']:
+        destdir = os.path.join(cfg['derivdir'],stream,var)
+    else:
+        destdir = os.path.join(cfg['datadir'],stream,var,ydir)
     # create path if required
     if not os.path.exists(stagedir):
             os.makedirs(stagedir)
@@ -221,13 +274,15 @@ def target(stream, var, yr, mn, dsargs, tstep, back):
     return stagedir, destdir, fname, daylist
 
 
-def dump_args(up, of, st, ps, yr, mns, tstep, back):
+def dump_args(of, st, ps, yr, mns, tstep, back, urgent):
     """ Create arguments dictionary and dump to json file
     """
     tstamp = datetime.now().strftime("%Y%m%d%H%M%S") 
     fname = f'era5_request_{tstamp}.json'
+    requestdir = cfg['requestdir'] 
+    if urgent:
+        requestdir += 'Urgent/'
     args = {}
-    args['update'] = up
     args['format'] = of
     args['stream'] = st
     args['params'] = ps
@@ -235,7 +290,7 @@ def dump_args(up, of, st, ps, yr, mns, tstep, back):
     args['months'] = mns
     args['timestep'] = tstep
     args['back'] = back
-    with open(fname, 'w+') as fj:
+    with open(requestdir + fname, 'w+') as fj:
          json.dump(args, fj)
     return
 

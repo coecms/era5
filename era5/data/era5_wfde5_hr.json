@@ -1,0 +1,11 @@
+{
+    "area": "90/-180/-90/179.75",
+    "dsid": "derived-near-surface-meteorological-variables",
+    "format": "tgz",
+    "reference_dataset": "cru",
+    "grid": "global",
+    "levels": [],
+    "params": [
+            "Rainf", "Tair", "SWdown", "LWdown",
+            "Wind", "Snowf", "PSurf", "Qair"]
+}
