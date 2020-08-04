@@ -24,12 +24,13 @@ Getting started
 
 To run a download::
 
-    python cli.py download -s surface -y 2018 -m 11 -p 228.128
+    era5 download -s surface -y 2018 -m 11 -p 228.128
 
 Download ERA5 variables, if month argument is not passed then the entire year will be downloaded. By default it downloads hourly data in netcdf format.
 
 Options: 
       * -q, --queue Create json file to add request to queue 
+      * -u, --urgent In conjunction with queue save the request file in a  separate directory that can be then prioritised. 
       * -s, --stream [surface|wave|pressure|land|cems_fire|agera5|wdfe5] ECMWF stream currently operative analysis surface, pressure levels, wave model, and derived products ERA5 land, CEMS_fire, AGERA5 and WDFE5
 [required] 
       * -y, --year TEXT year to download [required] 
@@ -41,15 +42,15 @@ Options:
       * --help
 Show this message and exit.
 
-To update files when a new month is releasedi, omit param flag::
+To update files when a new month is released, omit param flag::
 
-    python cli.py download -s surface -y 2019 -m 05 
+    era5 download -s surface -y 2019 -m 05 
 
 
 The 'download' sub command will actually request and download the data
 unless you use the 'queue' flag. If you want only to create a request::
 
-    python cli.py download -s surface -y 2018 -m 11 -p 228.128 -q
+    era5 download -s surface -y 2018 -m 11 -p 228.128 -q
 
 This will create a json file which stores the arguments passed::
 
@@ -79,6 +80,10 @@ Finally to delete records::
  This will delete all corresponding records but will list all records to be deleted and ask for confirmation first.
 
 
+Latest updates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+August 2020 - Added --urgent flag
+              Added support to distribute requests across multiple users accounts
 
 click era5 command code and input files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -95,7 +100,7 @@ click era5 command code and input files
 To configure the tool
 ~~~~~~~~~~~~~~~~~~~~~
 
-Thes efiles are in era5/data/
+These files are in era5/data/
 
 -  config.json -- to set configuration:
    * staging, data, logs directories,
