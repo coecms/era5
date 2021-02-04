@@ -262,8 +262,10 @@ def target(stream, var, yr, mn, dsargs, tstep, back, oformat):
         startmn=mn
         fname = f"{var}_{did}_{dsargs['grid']}_{yr}{startmn}{daylist[0]}_{yr}{mn}{daylist[-1]}.{oformat}"
     stagedir = os.path.join(cfg['staging'],stream, var,ydir)
-    if stream in ['cems_fire','agera5','wfde5']:
+    if stream in ['cems_fire','agera5']:
         destdir = os.path.join(cfg['derivdir'],stream,var)
+    elif stream == 'wfde5':
+        destdir = os.path.join(cfg['derivdir'],'v1-1',stream,var)
     else:
         destdir = os.path.join(cfg['datadir'],stream,var,ydir)
     # create path if required
