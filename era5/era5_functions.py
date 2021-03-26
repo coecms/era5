@@ -265,14 +265,9 @@ def target(stream, var, yr, mn, dsargs, tstep, back, oformat):
     if stream in ['cems_fire','agera5']:
         destdir = os.path.join(cfg['derivdir'],stream,var)
     elif stream == 'wfde5':
-        destdir = os.path.join(cfg['derivdir'],'v1-1',stream,var)
+        destdir = os.path.join(cfg['derivdir'],stream,'v1.1',var)
     else:
         destdir = os.path.join(cfg['datadir'],stream,var,ydir)
-    # create path if required
-    if not os.path.exists(stagedir):
-            os.makedirs(stagedir)
-    if not os.path.exists(destdir):
-            os.makedirs(destdir)
     return stagedir, destdir, fname, daylist
 
 

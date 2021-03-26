@@ -37,7 +37,6 @@ import sys
 import yaml
 from itertools import product as iproduct
 from multiprocessing.dummy import Pool as ThreadPool
-#from era5.era5_update_db import db_connect, query
 from era5.era5_functions import *
 from era5.era5_db import query, db_connect, update_db, delete_record, variables_stats
 import era5.cdsapi as cdsapi
@@ -189,6 +188,11 @@ def api_request(oformat, stream, params, yr, mntlist, tstep, back):
                 if file_exists(fname, nclist):
                     era5log.info(f'Skipping {fname} already exists')
                     continue
+                # create path if required
+                if not os.path.exists(stagedir):
+                    os.makedirs(stagedir)
+                if not os.path.exists(destdir):
+                    os.makedirs(destdir)
                 if mars:
                     rdict = build_mars(dsargs, y, mn, varp, oformat, tstep, back)
                 else:
@@ -281,7 +285,10 @@ def db_args(f):
         click.option('--year', '-y', multiple=True, required=False,
                      help="year to download"),
         click.option('-a','--action', type=click.Choice(['list','delete','update']), default='update',
-        help="db subcommand running mode: `update` (default) updates the db, `delete` deletes a record from db, `list` list all variables in db for the stream")
+        help="db subcommand running mode: `update` (default) updates the db, `delete` deletes a record from db, `list` list all variables in db for the stream"),
+        click.option('--verbose', '-v', is_flag=True, default=False,
+                     help="""To be used in conjuction with `list` action. It will print out a full list of missing or extra files,
+                             for every stream and timesteps where the total number of files on disk and the expected number of files do not match""")
     ]
     for c in reversed(constraints):
         f = c(f)
@@ -333,7 +340,7 @@ def scan(infile):
 @era5.command()
 @common_args
 @db_args
-def db(oformat, param, stream, year, month, timestep, action):
+def db(oformat, param, stream, year, month, timestep, action, verbose):
     """ 
     Work on database, options are 
     - update database,
@@ -350,9 +357,9 @@ def db(oformat, param, stream, year, month, timestep, action):
             print('A stream and at least one variable should be selected: -s <stream> -p <var-name>')
             sys.exit()
         delete_record(cfg, stream, list(param), list(year), list(month), timestep) #, oformat)
-    else:    
+    elif action == 'list':    
         varlist = [] 
-        variables_stats(cfg, stream, timestep, list(param))
+        variables_stats(cfg, stream, timestep, list(param), verbose)
 
 if __name__ == '__main__':
     era5()

@@ -25,6 +25,7 @@ from datetime import datetime
 from glob import glob
 from itertools import repeat
 from era5.era5_functions import define_args, read_vars
+from calendar import monthrange 
 import sys
 
 
@@ -139,27 +140,88 @@ def exp_files(stream, tstep):
     else:
         # should have 1 file x year + monthly for current year
         nfiles = end_yr - start_yr + end_mn + delay
-    return nfiles
+    # return the actual end_mn and end_yr corrected by delay
+    end_mn = end_mn + delay
+    if end_mn <=0:
+        end_mn = 12 + end_mn
+        end_yr = end_yr - 1
+    return nfiles, start_yr, end_yr, end_mn
+
+
+def exp_names(stream, var, tstep, yr, end_mn):
+    """Return list of files expected based on configuration files and current date
+    """
+    #load ds args for stream, time step
+    dsargs = define_args(stream, tstep)
+    if stream == 'land':
+        did = 'era5land'
+    else:
+        did = 'era5'
+    flist = []
+    # define filename based on var, yr, mn and stream attributes
+    for mn in [str(i).zfill(2) for i in range(1,end_mn+1)]:
+        #if tstep == 'mon':
+        #    flist.append(os.path.join(stream,var,'monthly',f"{var}_{did}_{dsargs['grid']}_{yr}{mn}01.nc"))
+        #else:
+            last = monthrange(int(yr),int(mn))[1]
+            flist.append(os.path.join(stream,var,yr,f"{var}_{did}_{dsargs['grid']}_{yr}{mn}01_{yr}{mn}{last}.nc"))
+    return flist
+
+
+def find_names(fs_list, basedir, stream, var, tstep, start_yr, end_yr, end_mn, difference):
+    """Find out exactly which files are missing or extra and print the list.
+    """
+    if tstep == 'mon' or stream in ['wdfe5', 'agera5', 'cesmfire']:
+        print('Not yet working for monthly data and derived products')
+        return
+    exp_list = []
+    # loop over each year and add to list all expected filenames for that year
+    for yr in [str(i) for i in range(start_yr, end_yr+1)]: 
+        last_mn = 12
+        if yr == str(end_yr):
+            last_mn = end_mn
+        exp_list.extend(exp_names(stream, var, tstep, yr, last_mn))
+    # loop over files returned by filesystem crawl, if they are not in expected filenames list print filename 
+    if difference == 'extra':
+        print("\nThese files are extra:\n")
+        for f in fs_list:
+            if f not in exp_list:
+                print(basedir + '/' + f)
+        print()
+    # loop over expected files list, if they are not in filesystem crawl list print filename 
+    elif difference == 'missing':
+        print("\nThese files are missing:\n")
+        for f in exp_list:
+            if f not in fs_list:
+                print(basedir + '/' + f)
+        print()
+    else:
+        print(f"Unrecognised option for difference: {difference}, should be `extra` or `missing`")
+    return
 
 
 def compare(conn, basedir, match, var, nfiles):
-    """
+    """Get list of files on database for selected stream/timestep and compare to the number of expected files.
+    If there are missing or extra files in database and verbose is selected, print a list of missing and/or extra files
     """
     # get a list of matching files on filesystem
-    fs_list = list_files(basedir, match)
+    flist = list_files(basedir, match)
+    fs_list = [f.replace(basedir+'/','') for f in flist]
     total = len(fs_list)
-    #print(f'Found {total} files for {var}.')
-    # up to here
+    # Print out comparisons with expected number of files
     if nfiles == total:
         print(f'All expected files are present for {var}\n')
     elif nfiles > total:
         print(f'{nfiles-total} files are missing for {var}\n')
+        difference = 'missing' 
     else:
         print(f'{total-nfiles} extra files than expected for {var}\n')
+        difference = 'extra' 
     # get a list of matching files in db
     sql = f"SELECT filename FROM file AS t WHERE t.location LIKE '{match}' ORDER BY filename ASC"
     xl = query(conn, sql, ())
     print(f'Records already in db: {len(xl)}')
+    return fs_list, xl, difference
 
 
 def update_db(cfg, stream, tstep, var):
@@ -204,7 +266,7 @@ def update_db(cfg, stream, tstep, var):
     print('--- Done ---')
 
 
-def variables_stats(cfg, stream, tstep, varlist=[]):
+def variables_stats(cfg, stream, tstep, varlist=[], verbose=False):
     """
     """
     # read configuration and open ERA5 files database
@@ -220,12 +282,14 @@ def variables_stats(cfg, stream, tstep, varlist=[]):
             print(f'{vardict[code][0]}   -   {vardict[code][1]}   -   {code}')
             varlist.append(vardict[code][0])
     # calculate expected number of files
-    nfiles = exp_files(stream, tstep)
+    nfiles, start_yr, end_yr, end_mn = exp_files(stream, tstep)
     basedir = get_basedir(cfg, stream)
 
     for var in varlist:
         fname, location = set_query(stream, var, tstep)
-        compare(conn, basedir, location, var, nfiles)
+        fs_list, xl, difference = compare(conn, basedir, location, var, nfiles)
+        if verbose and difference:
+            find_names(fs_list, basedir, stream, var, tstep, start_yr, end_yr, end_mn, difference)
 
 
 def delete_record(cfg, st, var, yr, mn, tstep):
